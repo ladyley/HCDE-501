@@ -1,0 +1,2175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Autonomous Shuttle HMI Prototype — HCDE 501</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root{
+    --bg-page:#0b0d10;
+    --frame-bg:#05060a;
+    --map-bg:#11161c;
+    --map-bg-2:#0c1116;
+    --card-bg:#ffffff;
+    --card-bg-soft:#f3f6f8;
+    --ink:#10151a;
+    --ink-soft:#56636c;
+    --teal:#13b5b1;
+    --teal-dark:#0a8f8c;
+    --blue:#4c8dff;
+    --blue-soft:#eaf2ff;
+    --green:#1fae60;
+    --green-soft:#e4f8ec;
+    --amber:#e8a93a;
+    --amber-soft:#fff3dd;
+    --red:#e5484d;
+    --red-soft:#fdeaea;
+    --pill-bg:#eef3f4;
+    --radius-lg:28px;
+    --radius-md:18px;
+    --radius-sm:12px;
+    --shadow-card:0 10px 30px rgba(0,0,0,0.18);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+
+  html,body{
+    margin:0;
+    padding:0;
+    background:var(--bg-page);
+    font-family:var(--font);
+    height:100%;
+    overflow-x:hidden;
+  }
+
+  body{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+    min-height:100vh;
+    padding:40px 20px 0 20px;
+  }
+
+  .page-title{
+    color:#6b7480;
+    font-size:13px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    margin-bottom:18px;
+    font-weight:600;
+  }
+
+  /* ============ TABLET FRAME ============ */
+  .tablet-scale-wrap{
+    position:relative;
+  }
+
+  .tablet-shell{
+    width:1280px;
+    position:relative;
+    transform-origin:top left;
+  }
+
+  .bezel{
+    background:linear-gradient(145deg,#1c2026,#0a0c0f);
+    border-radius:46px;
+    padding:18px;
+    box-shadow:
+      0 30px 60px rgba(0,0,0,0.55),
+      0 0 0 1px rgba(255,255,255,0.04) inset;
+  }
+
+  .screen{
+    position:relative;
+    width:100%;
+    aspect-ratio:1280/800;
+    background:var(--frame-bg);
+    border-radius:30px;
+    overflow:hidden;
+    box-shadow:0 0 0 2px rgba(255,255,255,0.03) inset;
+  }
+
+  /* ============ TOP STATUS BAR (persistent chrome) ============ */
+  .topbar{
+    position:absolute;
+    top:0; left:0; right:0;
+    height:44px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 26px;
+    background:rgba(5,7,10,0.0);
+    z-index:500;
+    font-size:14px;
+    color:#e8edf1;
+    pointer-events:none;
+    font-variant-numeric:tabular-nums;
+  }
+  .topbar .tb-left{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:0.02em;}
+  .topbar .tb-right{display:flex;align-items:center;gap:14px;}
+  .topbar .veh-status{
+    display:flex;align-items:center;gap:6px;
+    background:rgba(255,255,255,0.08);
+    padding:4px 10px 4px 8px;
+    border-radius:20px;
+    backdrop-filter:blur(6px);
+  }
+  .topbar .veh-status .dot{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 6px var(--green);
+  }
+  .topbar svg{display:block;}
+
+  /* ============ VIEWPORT (screen switcher area) ============ */
+  .viewport{
+    position:absolute;
+    inset:0;
+    top:0;
+  }
+
+  .view{
+    position:absolute;
+    inset:0;
+    opacity:0;
+    visibility:hidden;
+    transform:translateY(14px);
+    transition:opacity 260ms ease, transform 260ms ease, visibility 0s linear 260ms;
+    pointer-events:none;
+  }
+  .view.active{
+    opacity:1;
+    visibility:visible;
+    transform:translateY(0);
+    transition:opacity 260ms ease, transform 260ms ease;
+    pointer-events:auto;
+  }
+
+  /* ============ MAP BACKGROUND (Apple-Maps-style city canvas) ============ */
+  .map-bg{
+    position:absolute;
+    inset:0;
+    background:
+      radial-gradient(ellipse 560px 420px at 86% 90%, rgba(76,141,255,0.20), transparent 60%),
+      radial-gradient(ellipse 460px 340px at 8% 12%, rgba(66,189,129,0.16), transparent 62%),
+      radial-gradient(ellipse at 30% 20%, rgba(76,141,255,0.08), transparent 55%),
+      radial-gradient(ellipse at 75% 70%, rgba(19,181,177,0.10), transparent 50%),
+      linear-gradient(160deg, var(--map-bg) 0%, var(--map-bg-2) 100%);
+    overflow:hidden;
+  }
+  /* minor + major streets, aligned so avenues fall on the same lines as side streets */
+  .map-bg::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.055) 0 1.5px, transparent 1.5px 94px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.055) 0 1.5px, transparent 1.5px 94px),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.11) 0 4px, transparent 4px 282px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.11) 0 4px, transparent 4px 282px),
+      repeating-linear-gradient(0deg, transparent 0 139px, rgba(255,214,110,0.16) 139px 142px, transparent 142px 282px),
+      repeating-linear-gradient(90deg, transparent 0 139px, rgba(255,214,110,0.16) 139px 142px, transparent 142px 282px);
+    opacity:0.9;
+  }
+  /* soft city-block texture to break up the empty lots between streets */
+  .map-bg::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.028) 0 1px, transparent 1px 36px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.028) 0 1px, transparent 1px 36px);
+    opacity:0.55;
+    mix-blend-mode:screen;
+  }
+
+  .route-line-casing{
+    position:absolute;
+    stroke:rgba(255,255,255,0.55);
+    stroke-width:11;
+    fill:none;
+    stroke-linecap:round;
+  }
+  .route-line{
+    position:absolute;
+    stroke:var(--teal);
+    stroke-width:6;
+    fill:none;
+    stroke-linecap:round;
+    filter:drop-shadow(0 0 6px rgba(19,181,177,0.55));
+  }
+  .route-line-dim{
+    position:absolute;
+    stroke:rgba(255,255,255,0.14);
+    stroke-width:6;
+    fill:none;
+    stroke-linecap:round;
+  }
+  .road-surface{
+    position:absolute;
+    stroke:rgba(180,196,212,0.22);
+    stroke-width:34;
+    fill:none;
+    stroke-linecap:round;
+  }
+  .road-surface-edge{
+    position:absolute;
+    stroke:rgba(255,255,255,0.1);
+    stroke-width:36;
+    fill:none;
+    stroke-linecap:round;
+  }
+
+  /* ============ SCENERY: buildings / trees / crosswalks ============ */
+  .map-building{
+    position:absolute;
+    border-radius:8px;
+    background:linear-gradient(150deg, rgba(118,168,255,0.55), rgba(52,104,205,0.6));
+    box-shadow:0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.14);
+  }
+  .map-tree{
+    position:absolute;
+    width:16px;height:20px;
+    transform:translate(-50%,-85%);
+    z-index:2;
+  }
+  .map-tree svg{display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.4));}
+  .map-crosswalk{
+    position:absolute;
+    background-image:repeating-linear-gradient(90deg, rgba(255,255,255,0.6) 0 6px, transparent 6px 15px);
+    border-radius:2px;
+    opacity:0.85;
+  }
+
+  .map-pin{
+    position:absolute;
+    width:22px;height:22px;
+    border-radius:50% 50% 50% 0;
+    background:
+      radial-gradient(circle at 35% 35%, #fff 0 3.5px, transparent 4.5px),
+      linear-gradient(145deg, #2fd1cd, var(--teal) 65%);
+    transform:translate(-50%,-100%) rotate(-45deg);
+    box-shadow:0 0 0 5px rgba(19,181,177,0.18);
+    filter:drop-shadow(0 4px 6px rgba(0,0,0,0.4));
+  }
+  .map-pin.end{
+    background:
+      radial-gradient(circle at 35% 35%, #fff 0 3.5px, transparent 4.5px),
+      linear-gradient(145deg, #7badff, var(--blue) 65%);
+    box-shadow:0 0 0 5px rgba(76,141,255,0.18);
+  }
+
+  .car-icon{
+    position:absolute;
+    width:42px;
+    height:42px;
+    transform:translate(-50%,-50%);
+    transition:left 900ms ease, top 900ms ease, transform 900ms ease;
+    z-index:5;
+  }
+  .car-icon svg{width:100%;height:100%;filter:drop-shadow(0 3px 7px rgba(0,0,0,0.5));}
+  .car-icon.slowing svg circle.pulse{
+    animation:pulseRing 1.1s ease-out infinite;
+  }
+  @keyframes pulseRing{
+    0%{r:16;opacity:0.9;}
+    100%{r:30;opacity:0;}
+  }
+
+  /* ============ CARDS / OVERLAYS ============ */
+  .card{
+    background:var(--card-bg);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-card);
+    color:var(--ink);
+  }
+
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:7px 16px;
+    border-radius:999px;
+    font-size:14px;
+    font-weight:600;
+    background:var(--pill-bg);
+    color:var(--ink);
+  }
+  .pill .dot{width:8px;height:8px;border-radius:50%;}
+  .pill.green{background:var(--green-soft);color:#146b3a;}
+  .pill.green .dot{background:var(--green);box-shadow:0 0 6px rgba(31,174,96,0.6);}
+  .pill.amber{background:var(--amber-soft);color:#8a5a09;}
+  .pill.amber .dot{background:var(--amber);box-shadow:0 0 6px rgba(232,169,58,0.6);}
+  .pill.blue{background:var(--blue-soft);color:#1d4e9e;}
+  .pill.blue .dot{background:var(--blue);box-shadow:0 0 6px rgba(76,141,255,0.6);}
+  .pill.red{background:var(--red-soft);color:#9c2327;}
+  .pill.red .dot{background:var(--red);box-shadow:0 0 6px rgba(229,72,77,0.6);}
+
+  .btn{
+    font-family:var(--font);
+    font-size:17px;
+    font-weight:700;
+    border:none;
+    border-radius:999px;
+    padding:16px 30px;
+    cursor:pointer;
+    transition:transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn-primary{
+    background:linear-gradient(135deg,var(--teal),var(--teal-dark));
+    color:#fff;
+    box-shadow:0 8px 20px rgba(19,181,177,0.35);
+  }
+  .btn-primary:hover{box-shadow:0 10px 24px rgba(19,181,177,0.5);}
+  .btn-secondary{
+    background:var(--card-bg-soft);
+    color:var(--ink);
+  }
+  .btn-secondary:hover{background:#e6ecee;}
+  .btn-danger{
+    background:linear-gradient(135deg,#f0696d,var(--red));
+    color:#fff;
+    box-shadow:0 8px 20px rgba(229,72,77,0.35);
+  }
+  .btn-outline{
+    background:transparent;
+    color:#fff;
+    border:1.5px solid rgba(255,255,255,0.4);
+  }
+  .btn-outline:hover{background:rgba(255,255,255,0.1);}
+  .btn-sm{padding:10px 18px;font-size:14px;border-radius:999px;}
+  .btn-xl{padding:24px 34px;font-size:21px;border-radius:26px;}
+  .btn-block{width:100%;}
+  .btn:disabled{opacity:0.45;cursor:not-allowed;}
+
+  .icon-btn{
+    width:52px;height:52px;
+    border-radius:50%;
+    background:rgba(20,24,28,0.72);
+    backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,0.12);
+    color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    transition:transform 120ms ease, background 120ms ease;
+  }
+  .icon-btn:hover{background:rgba(40,46,52,0.85);}
+  .icon-btn:active{transform:scale(0.94);}
+  .icon-btn.sos{
+    background:rgba(229,72,77,0.92);
+    border-color:rgba(255,255,255,0.25);
+  }
+  .icon-btn.sos:hover{background:#e5484d;}
+
+  h1,h2,h3,p{margin:0;}
+
+  /* ===== generic centered content column used by several screens ===== */
+  .center-col{
+    position:relative;
+    z-index:10;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:26px;
+    padding:70px 60px 40px;
+    text-align:center;
+  }
+
+  /* ====== SCREEN 1: WELCOME ====== */
+  #screen-welcome .mini-map{
+    width:360px;height:220px;
+    border-radius:24px;
+    position:relative;
+    overflow:hidden;
+    background:var(--map-bg);
+    box-shadow:0 10px 26px rgba(0,0,0,0.4);
+  }
+  .welcome-card{
+    position:relative;
+    width:620px;
+    max-width:92%;
+    padding:40px 44px 44px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:18px;
+    background:linear-gradient(180deg,#ffffff 0%, var(--card-bg-soft) 100%);
+  }
+  .welcome-card::before{
+    content:"";
+    position:absolute;
+    inset:-36px;
+    z-index:-1;
+    background:radial-gradient(circle, rgba(19,181,177,0.32), rgba(76,141,255,0.10) 55%, transparent 75%);
+    filter:blur(18px);
+  }
+  .welcome-badge{
+    width:64px;height:64px;
+    border-radius:50%;
+    background:linear-gradient(145deg,var(--teal),var(--teal-dark));
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 10px 24px rgba(19,181,177,0.45), 0 0 0 6px rgba(19,181,177,0.12);
+    margin-bottom:-4px;
+  }
+  .welcome-card h1{font-size:30px;color:var(--ink);font-weight:800;}
+  .welcome-sub{color:var(--ink-soft);font-size:16px;}
+  .trip-meta-row{
+    display:flex;
+    gap:14px;
+    width:100%;
+    justify-content:center;
+    margin-top:4px;
+  }
+  .meta-box{
+    background:var(--card-bg-soft);
+    border-radius:16px;
+    padding:14px 22px;
+    text-align:left;
+    flex:1;
+  }
+  .welcome-card .meta-box{
+    padding:14px 20px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .meta-box .meta-icon{
+    width:36px;height:36px;
+    border-radius:50%;
+    background:#fff;
+    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .meta-box .label{font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;}
+  .meta-box .value{font-size:20px;color:var(--ink);font-weight:800;margin-top:4px;}
+  .eta-ring{
+    position:relative;
+    width:150px;height:150px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:
+      radial-gradient(circle at 50% 50%, #fff 62%, transparent 63%),
+      conic-gradient(var(--teal) 0deg 300deg, #e3e8ea 300deg 360deg);
+    box-shadow:0 10px 26px rgba(19,181,177,0.25);
+  }
+  .eta-big{
+    font-size:46px;
+    font-weight:800;
+    color:var(--teal-dark);
+    line-height:1;
+    text-align:center;
+  }
+  .eta-big span{display:block;font-size:13px;font-weight:700;color:var(--ink-soft);margin-top:4px;text-transform:uppercase;letter-spacing:0.04em;}
+  .journey-strip{
+    position:relative;
+    width:100%;
+    height:86px;
+    border-radius:18px;
+    overflow:hidden;
+    background:var(--map-bg);
+    box-shadow:0 2px 10px rgba(0,0,0,0.2) inset;
+  }
+  .journey-strip .journey-label{
+    position:absolute;
+    top:8px;left:12px;
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    color:rgba(255,255,255,0.55);
+    z-index:5;
+  }
+  .car-icon.mini{width:28px;height:28px;}
+
+  /* ====== SCREEN 2: BOARDING ====== */
+  .boarding-card{
+    width:560px;max-width:92%;
+    padding:44px;
+    display:flex;flex-direction:column;align-items:center;gap:22px;
+  }
+  .boarding-step{
+    display:flex;align-items:center;gap:16px;
+    background:var(--card-bg-soft);
+    border-radius:16px;
+    padding:14px 20px;
+    width:100%;
+  }
+  .boarding-step .step-visual{
+    position:relative;
+    width:60px;height:60px;border-radius:16px;
+    background:#fff;
+    box-shadow:0 3px 10px rgba(0,0,0,0.1);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .boarding-step .step-visual .badge{
+    position:absolute;
+    right:-6px;bottom:-6px;
+    width:22px;height:22px;border-radius:50%;
+    background:var(--green);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 0 3px #fff;
+  }
+  .boarding-step.pending .step-visual{
+    animation:stepPulseRing 1.3s ease-in-out infinite;
+  }
+  @keyframes stepPulseRing{
+    0%,100%{box-shadow:0 3px 10px rgba(0,0,0,0.1), 0 0 0 0 rgba(232,169,58,0.45);}
+    50%{box-shadow:0 3px 10px rgba(0,0,0,0.1), 0 0 0 9px rgba(232,169,58,0);}
+  }
+  .boarding-step .text{text-align:left;}
+  .boarding-step .text .t1{font-weight:700;font-size:16px;color:var(--ink);}
+  .boarding-step .text .t2{font-size:13px;color:var(--ink-soft);margin-top:2px;}
+  .door-visual{
+    display:flex;gap:18px;margin:4px 0;
+  }
+  .door-shape{
+    width:70px;height:96px;
+    border-radius:10px;
+    background:var(--pill-bg);
+    border:2.5px solid #c9d3d6;
+    position:relative;
+    transition:all 400ms ease;
+  }
+  .door-shape.unlocked{
+    border-color:var(--green);
+    background:var(--green-soft);
+  }
+  .door-shape .lock-icon{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  }
+
+  /* ====== SCREEN 3: RIDE START (F1) ====== */
+  .status-card-top{
+    position:absolute;
+    top:70px;left:40px;right:40px;
+    z-index:20;
+    padding:22px 28px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+  }
+  .trip-title{font-size:22px;font-weight:800;color:var(--ink);}
+  .trip-sub{font-size:14px;color:var(--ink-soft);margin-top:4px;}
+  .f1-bottom-card{
+    position:absolute;
+    bottom:34px;left:40px;right:40px;
+    z-index:20;
+    padding:26px 30px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:24px;
+  }
+  .f1-route-map{
+    position:absolute;
+    inset:160px 40px 150px 40px;
+    border-radius:26px;
+    overflow:hidden;
+    background:var(--map-bg);
+  }
+
+  /* ====== SCREEN 4: IN-TRIP (home base) ====== */
+  .trip-map-full{position:absolute;inset:0;}
+  .persistent-topcard{
+    position:absolute;
+    top:66px; left:30px; right:30px;
+    z-index:30;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+  }
+  .next-turn-card{
+    padding:18px 24px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    flex:1;
+  }
+  .turn-arrow{
+    width:46px;height:46px;
+    border-radius:14px;
+    background:var(--blue-soft);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .next-turn-card .label{font-size:12px;color:var(--ink-soft);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;}
+  .next-turn-card .value{font-size:18px;font-weight:800;color:var(--ink);margin-top:2px;}
+
+  .ads-indicator-pill{
+    flex-shrink:0;
+    padding:12px 18px;
+  }
+
+  .bottom-stats-bar{
+    position:absolute;
+    bottom:28px; left:30px; right:30px;
+    z-index:30;
+    display:flex;
+    align-items:center;
+    gap:16px;
+  }
+  .stat-card{
+    padding:16px 22px;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    min-width:110px;
+  }
+  .stat-card .label{font-size:11px;color:var(--ink-soft);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;}
+  .stat-card .value{font-size:24px;font-weight:800;color:var(--ink);}
+  .stat-card .value small{font-size:13px;font-weight:700;color:var(--ink-soft);}
+
+  .request-stop-btn{
+    flex:1;
+    padding:16px 24px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+  }
+  .corner-controls{
+    position:absolute;
+    top:66px; right:30px;
+    z-index:40;
+    display:flex;
+    gap:10px;
+  }
+  .corner-controls.left{left:30px;right:auto;}
+  .demo-trigger-dock{
+    position:absolute;
+    top:128px;
+    right:30px;
+    z-index:35;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    align-items:flex-end;
+  }
+  .demo-chip{
+    background:rgba(10,12,15,0.78);
+    color:#cdd6db;
+    border:1px dashed rgba(255,255,255,0.3);
+    border-radius:999px;
+    padding:8px 14px;
+    font-size:12px;
+    font-family:"SF Mono", Menlo, Consolas, monospace;
+    cursor:pointer;
+    transition:background 120ms ease;
+    white-space:nowrap;
+  }
+  .demo-chip:hover{background:rgba(30,34,40,0.9);}
+
+  .exit-affordance{
+    position:absolute;
+    bottom:28px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:30;
+  }
+
+  /* ====== SCREEN 5: PEDESTRIAN BANNER (F2) overlay ====== */
+  .env-banner{
+    position:absolute;
+    top:120px; left:50%;
+    transform:translate(-50%,-20px);
+    width:620px; max-width:88%;
+    z-index:60;
+    padding:22px 26px;
+    display:flex;
+    align-items:center;
+    gap:18px;
+    opacity:0;
+    transition:opacity 280ms ease, transform 280ms ease;
+    pointer-events:none;
+  }
+  .env-banner.show{
+    opacity:1;
+    transform:translate(-50%,0);
+    pointer-events:auto;
+  }
+  .env-banner .icon-wrap{
+    width:52px;height:52px;border-radius:50%;
+    background:var(--amber-soft);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .env-banner .text{text-align:left;flex:1;}
+  .env-banner .text .t1{font-weight:800;font-size:17px;color:var(--ink);}
+  .env-banner .text .t2{font-size:13.5px;color:var(--ink-soft);margin-top:3px;}
+  .env-banner .dismiss{
+    background:none;border:none;color:#9aa5ab;font-size:20px;cursor:pointer;
+    width:32px;height:32px;flex-shrink:0;
+  }
+
+  /* ====== SCREEN 6: STOP REQUEST (F3) ====== */
+  .sheet{
+    position:absolute;
+    left:50%;
+    bottom:0;
+    transform:translate(-50%,0);
+    width:720px; max-width:94%;
+    z-index:60;
+    padding:36px 42px 40px;
+    border-radius:32px 32px 0 0;
+    box-shadow:0 -10px 40px rgba(0,0,0,0.35);
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+  .sheet-handle{
+    width:46px;height:5px;background:#dfe5e7;border-radius:4px;
+    margin:0 auto 4px;
+  }
+  .sheet h2{font-size:24px;color:var(--ink);font-weight:800;}
+  .sheet .sub{color:var(--ink-soft);font-size:15px;}
+  .stop-option-row{
+    display:flex;
+    gap:16px;
+  }
+  .stop-option{
+    flex:1;
+    background:var(--card-bg-soft);
+    border:2px solid transparent;
+    border-radius:20px;
+    padding:20px;
+    text-align:left;
+    cursor:pointer;
+    transition:border-color 150ms ease, background 150ms ease;
+  }
+  .stop-option:hover{border-color:var(--teal);background:#eefcfb;}
+  .stop-option .t1{font-weight:800;font-size:16px;color:var(--ink);}
+  .stop-option .t2{font-size:13px;color:var(--ink-soft);margin-top:6px;line-height:1.4;}
+
+  .spinner{
+    width:54px;height:54px;
+    border-radius:50%;
+    border:5px solid var(--pill-bg);
+    border-top-color:var(--teal);
+    animation:spin 0.9s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .demo-branch-row{
+    display:flex;
+    gap:12px;
+    justify-content:center;
+    margin-top:6px;
+    padding-top:16px;
+    border-top:1px dashed #e2e7e9;
+  }
+  .demo-branch-row .lbl{font-size:12px;color:#9aa5ab;font-family:"SF Mono",Menlo,monospace;align-self:center;margin-right:4px;}
+
+  /* ====== SCREEN 7: CRITICAL WARNING (F4) ====== */
+  .critical-overlay{
+    position:absolute;inset:0;
+    z-index:100;
+    background:linear-gradient(160deg,#8a1418,#4a0d10 70%);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:30px;
+    text-align:center;
+    padding:60px;
+    color:#fff;
+    animation:flashBorder 1.4s ease-in-out infinite;
+  }
+  @keyframes flashBorder{
+    0%,100%{box-shadow:inset 0 0 0 0 rgba(255,80,80,0);}
+    50%{box-shadow:inset 0 0 60px 10px rgba(255,80,80,0.35);}
+  }
+  .critical-icon{
+    width:110px;height:110px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.12);
+    display:flex;align-items:center;justify-content:center;
+    animation:iconPulse 1s ease-in-out infinite;
+  }
+  @keyframes iconPulse{
+    0%,100%{transform:scale(1);}
+    50%{transform:scale(1.08);}
+  }
+  .critical-overlay h1{
+    font-size:34px;
+    font-weight:900;
+    max-width:760px;
+    line-height:1.3;
+  }
+  .critical-overlay .sub{
+    font-size:17px;
+    opacity:0.9;
+    max-width:600px;
+  }
+  .critical-overlay .btn-continue-wrap{
+    min-height:60px;
+    display:flex;
+    align-items:center;
+  }
+
+  /* ====== SCREEN 8: MRM RECOVERY (F5) ====== */
+  .recovery-card{
+    width:680px; max-width:92%;
+    padding:40px 46px;
+    display:flex;
+    flex-direction:column;
+    gap:22px;
+  }
+  .recovery-status-badge{
+    display:inline-flex;align-self:flex-start;
+  }
+  .recovery-card h2{font-size:26px;font-weight:800;color:var(--ink);}
+  .recovery-explain{font-size:15px;color:var(--ink-soft);line-height:1.5;}
+  .timeline{
+    display:flex;
+    flex-direction:column;
+    gap:0;
+    margin-top:6px;
+  }
+  .timeline-step{
+    display:flex;
+    gap:16px;
+    position:relative;
+    padding-bottom:26px;
+  }
+  .timeline-step:last-child{padding-bottom:0;}
+  .timeline-step .node-col{
+    display:flex;flex-direction:column;align-items:center;
+  }
+  .timeline-step .node{
+    width:26px;height:26px;border-radius:50%;
+    background:#e3e8ea;
+    border:3px solid #e3e8ea;
+    flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    transition:all 200ms ease;
+    z-index:2;
+  }
+  .timeline-step.done .node{background:var(--green);border-color:var(--green);}
+  .timeline-step.active .node{background:#fff;border-color:var(--teal);box-shadow:0 0 0 4px rgba(19,181,177,0.18);}
+  .timeline-step .line{
+    width:3px;flex:1;
+    background:#e3e8ea;
+    margin-top:2px;
+  }
+  .timeline-step.done .line{background:var(--green);}
+  .timeline-step .content{padding-top:2px;}
+  .timeline-step .content .t1{font-weight:800;font-size:15.5px;color:var(--ink);}
+  .timeline-step.pending .content .t1{color:#a6afb4;}
+  .timeline-step .content .t2{font-size:13px;color:var(--ink-soft);margin-top:3px;}
+
+  /* ====== SCREEN 9: SOS / EMERGENCY (F6) ====== */
+  .sos-overlay{
+    position:absolute;inset:0;
+    z-index:90;
+    background:rgba(5,7,10,0.72);
+    backdrop-filter:blur(4px);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .sos-card{
+    width:620px;max-width:90%;
+    padding:40px 44px;
+    display:flex;flex-direction:column;gap:18px;
+  }
+  .sos-card h2{font-size:24px;font-weight:800;color:var(--ink);}
+  .sos-option{
+    display:flex;align-items:center;gap:16px;
+    padding:18px 20px;
+    border-radius:18px;
+    background:var(--card-bg-soft);
+    border:none;
+    cursor:pointer;
+    text-align:left;
+    width:100%;
+    font-family:var(--font);
+    transition:background 150ms ease;
+  }
+  .sos-option:hover{background:#e9eef0;}
+  .sos-option.emergency{background:var(--red-soft);}
+  .sos-option.emergency:hover{background:#fbdada;}
+  .sos-option .ic{
+    width:44px;height:44px;border-radius:50%;
+    background:#fff;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .sos-option .t1{font-weight:800;font-size:16px;color:var(--ink);}
+  .sos-option .t2{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+
+  .sos-routing{
+    display:flex;flex-direction:column;align-items:center;gap:20px;
+    text-align:center;
+    padding:20px 10px;
+  }
+  .sos-routing .t1{font-size:19px;font-weight:800;color:var(--ink);}
+  .sos-routing .t2{font-size:14px;color:var(--ink-soft);}
+
+  /* ====== SCREEN 10: ARRIVAL ====== */
+  .arrival-card{
+    width:600px;max-width:92%;
+    padding:44px;
+    display:flex;flex-direction:column;align-items:center;gap:20px;
+  }
+  .arrival-check{
+    width:84px;height:84px;border-radius:50%;
+    background:var(--green-soft);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .arrival-card h1{font-size:28px;font-weight:800;color:var(--ink);}
+  .trip-summary-row{
+    display:flex;gap:14px;width:100%;
+  }
+  .stars{
+    display:flex;gap:10px;
+    font-size:34px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .stars .star{color:#dfe5e7;transition:color 150ms ease, transform 100ms ease;}
+  .stars .star.filled{color:#ffb020;}
+  .stars .star:hover{transform:scale(1.15);}
+
+  /* ====== back/close affordance shared ====== */
+  .back-affordance{
+    position:absolute;
+    top:66px; left:30px;
+    z-index:40;
+  }
+
+  /* ====== CALL SUPPORT MODAL (overlay, available on top of any screen) ====== */
+  .call-support-overlay{
+    position:absolute;inset:0;
+    z-index:150;
+    background:rgba(5,7,10,0.72);
+    backdrop-filter:blur(4px);
+    display:none;
+    align-items:center;
+    justify-content:center;
+  }
+  .call-support-overlay.show{display:flex;}
+  .call-support-card{
+    width:480px;max-width:88%;
+    padding:40px 44px;
+    display:flex;flex-direction:column;align-items:center;gap:16px;
+    text-align:center;
+  }
+  .call-support-card .cs-icon{
+    width:56px;height:56px;border-radius:50%;
+    background:var(--blue-soft);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .call-support-card h2{font-size:21px;font-weight:800;color:var(--ink);}
+  .call-support-card .sub{font-size:14.5px;color:var(--ink-soft);line-height:1.5;}
+  .call-support-actions{display:flex;gap:12px;width:100%;margin-top:6px;}
+
+  /* ========================================================= */
+  /* PRESENTER / DEV NAV STRIP (outside the product UI)         */
+  /* ========================================================= */
+  .presenter-tool{
+    width:1280px;
+    max-width:96vw;
+    margin:22px 0 40px;
+    background:#dcdfe2;
+    border:1px solid #b9bec2;
+    border-radius:10px;
+    font-family:"SF Mono","Consolas","Menlo",monospace;
+    color:#2b2f33;
+    box-shadow:0 2px 8px rgba(0,0,0,0.25);
+  }
+  .presenter-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:9px 16px;
+    border-bottom:1px solid #b9bec2;
+    background:#cfd3d6;
+    border-radius:10px 10px 0 0;
+  }
+  .presenter-header .ph-title{
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    color:#45494d;
+  }
+  .presenter-header .ph-toggle{
+    font-size:11px;
+    background:#fff;
+    border:1px solid #b9bec2;
+    border-radius:6px;
+    padding:4px 10px;
+    cursor:pointer;
+    color:#2b2f33;
+  }
+  .presenter-body{
+    padding:14px 16px 16px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .presenter-body.collapsed{display:none;}
+  .pnav-btn{
+    position:relative;
+    background:#f3f4f5;
+    border:1px solid #b9bec2;
+    border-radius:6px;
+    padding:7px 10px;
+    font-family:inherit;
+    font-size:11.5px;
+    cursor:pointer;
+    color:#2b2f33;
+    text-align:left;
+    line-height:1.35;
+    min-width:150px;
+  }
+  .pnav-btn:hover{background:#e6f7f6;border-color:var(--teal-dark);}
+  .pnav-btn .fn{
+    display:inline-block;
+    background:#3a7f7c;
+    color:#fff;
+    font-weight:700;
+    border-radius:4px;
+    padding:1px 5px;
+    font-size:10px;
+    margin-right:5px;
+  }
+  .pnav-btn .fn.none{background:#8a8f93;}
+  .pnav-btn .scr-name{font-weight:700;}
+  .pnav-btn .cite{
+    display:none;
+    margin-top:6px;
+    padding-top:6px;
+    border-top:1px dashed #b9bec2;
+    font-size:10.5px;
+    color:#45494d;
+    font-weight:400;
+    line-height:1.4;
+  }
+  .pnav-btn.cite-open .cite{display:block;}
+  .cite a{color:#0a6f6c;}
+  .cite-toggle-link{
+    display:inline-block;
+    margin-top:4px;
+    font-size:10px;
+    text-decoration:underline;
+    color:#5a6166;
+    cursor:pointer;
+  }
+
+  .presenter-legend{
+    width:100%;
+    font-size:10.5px;
+    color:#5a6166;
+    padding-top:6px;
+    margin-top:4px;
+    border-top:1px solid #c7cbce;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="page-title">HCDE 501 &middot; Autonomous Shuttle In-Car HMI Prototype</div>
+
+<div class="tablet-scale-wrap" id="tabletScaleWrap">
+<div class="tablet-shell" id="tabletShell">
+  <div class="bezel">
+    <div class="screen" id="screen">
+
+      <!-- Persistent top bar chrome -->
+      <div class="topbar">
+        <div class="tb-left" id="clock">10:24 AM</div>
+        <div class="tb-right">
+          <div class="veh-status">
+            <span class="dot"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 13l1.6-4.8A2 2 0 0 1 6.5 7h11a2 2 0 0 1 1.9 1.2L21 13M3 13v4a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-4M3 13h18" stroke="#e8edf1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="17" r="1.2" fill="#e8edf1"/><circle cx="17" cy="17" r="1.2" fill="#e8edf1"/></svg>
+            <span style="font-size:12px;font-weight:600;">Shuttle 04</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="viewport" id="viewport">
+
+        <!-- ============ SCREEN 1: WELCOME / ARRIVING ============ -->
+        <section class="view" id="screen-welcome" data-screen="welcome">
+          <div class="map-bg">
+            <svg class="route-line-dim" width="100%" height="100%" preserveAspectRatio="none"><path d="M 150 650 Q 400 500 500 400 T 900 220" /></svg>
+          </div>
+          <div class="center-col">
+            <div class="card welcome-card">
+              <div class="welcome-badge">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M3 13l1.6-4.8A2 2 0 0 1 6.5 7h11a2 2 0 0 1 1.9 1.2L21 13M3 13v4a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-4M3 13h18" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="17" r="1.3" fill="#fff"/><circle cx="17" cy="17" r="1.3" fill="#fff"/></svg>
+              </div>
+              <div class="pill blue"><span class="dot"></span>Trip confirmed</div>
+              <h1>Hi Jordan, your ride is arriving</h1>
+              <div class="welcome-sub">Confirmation code <strong>WM-7731</strong> &middot; Match the code on your pickup sign</div>
+              <div class="eta-ring">
+                <div class="eta-big" id="welcome-eta">2<span>min away</span></div>
+              </div>
+              <div class="journey-strip">
+                <div class="journey-label">Tracking your ride</div>
+                <svg class="route-line-dim" width="100%" height="100%" preserveAspectRatio="none"><path d="M 20 44 Q 270 16 520 44" /></svg>
+                <div class="car-icon mini" id="welcome-car" style="left:7%;top:60%;">
+                  <svg viewBox="0 0 48 48">
+                    <circle class="pulse" cx="24" cy="24" r="16" fill="rgba(19,181,177,0.3)"/>
+                    <g transform="translate(24,24) rotate(90)">
+                      <rect x="-9.5" y="-9" width="3" height="6" rx="1.4" fill="#06201f"/>
+                      <rect x="6.5" y="-9" width="3" height="6" rx="1.4" fill="#06201f"/>
+                      <rect x="-9.5" y="4" width="3" height="6" rx="1.4" fill="#06201f"/>
+                      <rect x="6.5" y="4" width="3" height="6" rx="1.4" fill="#06201f"/>
+                      <rect x="-8" y="-13" width="16" height="26" rx="7" fill="#13b5b1"/>
+                      <rect x="-8" y="-13" width="16" height="10" rx="7" fill="#ffffff" opacity="0.1"/>
+                      <rect x="-5.3" y="-7" width="10.6" height="14" rx="4" fill="#0a8f8c"/>
+                      <rect x="-9.3" y="-6" width="2" height="3" rx="1" fill="#0a8f8c"/>
+                      <rect x="7.3" y="-6" width="2" height="3" rx="1" fill="#0a8f8c"/>
+                      <circle cx="-3.6" cy="-11.3" r="1" fill="#fff3d0"/>
+                      <circle cx="3.6" cy="-11.3" r="1" fill="#fff3d0"/>
+                      <circle cx="-3.6" cy="11.3" r="0.9" fill="#ff8a80"/>
+                      <circle cx="3.6" cy="11.3" r="0.9" fill="#ff8a80"/>
+                    </g>
+                  </svg>
+                </div>
+                <div class="map-pin end" style="left:93%;top:62%;"></div>
+              </div>
+              <div class="trip-meta-row">
+                <div class="meta-box">
+                  <div class="meta-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z" fill="#13b5b1"/><circle cx="12" cy="9.5" r="2.4" fill="#fff"/></svg></div>
+                  <div>
+                    <div class="label">Pickup</div>
+                    <div class="value">3rd &amp; Pike</div>
+                  </div>
+                </div>
+                <div class="meta-box">
+                  <div class="meta-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 13l1.6-4.8A2 2 0 0 1 6.5 7h11a2 2 0 0 1 1.9 1.2L21 13M3 13v4a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-4M3 13h18" stroke="#13b5b1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="17" r="1.2" fill="#13b5b1"/><circle cx="17" cy="17" r="1.2" fill="#13b5b1"/></svg></div>
+                  <div>
+                    <div class="label">Vehicle</div>
+                    <div class="value">White Jaguar &middot; WM-7731</div>
+                  </div>
+                </div>
+              </div>
+              <div class="welcome-sub" style="margin-top:-6px;font-size:13px;">We'll let you know the moment your ride arrives.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ SCREEN 1b: CAR ARRIVED ============ -->
+        <section class="view" id="screen-carArrived" data-screen="carArrived">
+          <div class="map-bg">
+            <div class="car-icon" style="left:50%;top:46%;">
+              <svg viewBox="0 0 48 48">
+                <circle class="pulse" cx="24" cy="24" r="16" fill="rgba(19,181,177,0.2)"/>
+                <g transform="translate(24,24) rotate(0)">
+                  <rect x="-9.5" y="-9" width="3" height="6" rx="1.4" fill="#06201f"/>
+                  <rect x="6.5" y="-9" width="3" height="6" rx="1.4" fill="#06201f"/>
+                  <rect x="-9.5" y="4" width="3" height="6" rx="1.4" fill="#06201f"/>
+                  <rect x="6.5" y="4" width="3" height="6" rx="1.4" fill="#06201f"/>
+                  <rect x="-8" y="-13" width="16" height="26" rx="7" fill="#13b5b1"/>
+                  <rect x="-8" y="-13" width="16" height="10" rx="7" fill="#ffffff" opacity="0.1"/>
+                  <rect x="-5.3" y="-7" width="10.6" height="14" rx="4" fill="#0a8f8c"/>
+                  <rect x="-9.3" y="-6" width="2" height="3" rx="1" fill="#0a8f8c"/>
+                  <rect x="7.3" y="-6" width="2" height="3" rx="1" fill="#0a8f8c"/>
+                  <circle cx="-3.6" cy="-11.3" r="1" fill="#fff3d0"/>
+                  <circle cx="3.6" cy="-11.3" r="1" fill="#fff3d0"/>
+                  <circle cx="-3.6" cy="11.3" r="0.9" fill="#ff8a80"/>
+                  <circle cx="3.6" cy="11.3" r="0.9" fill="#ff8a80"/>
+                </g>
+              </svg>
+            </div>
+          </div>
+          <div class="center-col">
+            <div class="card welcome-card">
+              <div class="welcome-badge">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div class="pill green"><span class="dot"></span>Vehicle arrived</div>
+              <h1>Your ride is here, Jordan</h1>
+              <div class="welcome-sub">Confirmation code <strong>WM-7731</strong> &middot; Match the code on the vehicle</div>
+              <div class="trip-meta-row">
+                <div class="meta-box">
+                  <div class="meta-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 13l1.6-4.8A2 2 0 0 1 6.5 7h11a2 2 0 0 1 1.9 1.2L21 13M3 13v4a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-4M3 13h18" stroke="#13b5b1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="17" r="1.2" fill="#13b5b1"/><circle cx="17" cy="17" r="1.2" fill="#13b5b1"/></svg></div>
+                  <div>
+                    <div class="label">Vehicle</div>
+                    <div class="value">White Jaguar &middot; WM-7731</div>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-primary btn-block btn-xl" style="margin-top:8px;" onclick="goTo('unlockDoors')">Continue</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ SCREEN 1c: UNLOCK DOORS ============ -->
+        <section class="view" id="screen-unlockDoors" data-screen="unlockDoors">
+          <div class="map-bg">
+            <div class="car-icon" style="left:50%;top:46%;">
+              <svg viewBox="0 0 48 48">
+                <circle class="pulse" cx="24" cy="24" r="16" fill="rgba(19,181,177,0.2)"/>
+                <g transform="translate(24,24) rotate(0)">
+                  <rect x="-9.5" y="-9" width="3" height="6" rx="1.4" fill="#06201f"/>
+                  <rect x="6.5" y="-9" width="3" height="6" rx="1.4" fill="#06201f"/>
+                  <rect x="-9.5" y="4" width="3" height="6" rx="1.4" fill="#06201f"/>
+                  <rect x="6.5" y="4" width="3" height="6" rx="1.4" fill="#06201f"/>
+                  <rect x="-8" y="-13" width="16" height="26" rx="7" fill="#13b5b1"/>
+                  <rect x="-8" y="-13" width="16" height="10" rx="7" fill="#ffffff" opacity="0.1"/>
+                  <rect x="-5.3" y="-7" width="10.6" height="14" rx="4" fill="#0a8f8c"/>
+                  <rect x="-9.3" y="-6" width="2" height="3" rx="1" fill="#0a8f8c"/>
+                  <rect x="7.3" y="-6" width="2" height="3" rx="1" fill="#0a8f8c"/>
+                  <circle cx="-3.6" cy="-11.3" r="1" fill="#fff3d0"/>
+                  <circle cx="3.6" cy="-11.3" r="1" fill="#fff3d0"/>
+                  <circle cx="-3.6" cy="11.3" r="0.9" fill="#ff8a80"/>
+                  <circle cx="3.6" cy="11.3" r="0.9" fill="#ff8a80"/>
+                </g>
+              </svg>
+            </div>
+          </div>
+          <div class="center-col">
+            <div class="card welcome-card">
+              <div class="welcome-badge">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="9" rx="2" stroke="#fff" stroke-width="1.8"/><path d="M8 11V7a4 4 0 0 1 7-2.6" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+              </div>
+              <div class="pill blue"><span class="dot"></span>Ready to board</div>
+              <h1>Unlock the doors</h1>
+              <div class="welcome-sub">Tap below to unlock, then step inside and buckle up</div>
+              <div class="door-visual">
+                <div class="door-shape" id="unlockDoorLeft">
+                  <div class="lock-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="9" rx="2" stroke="#8a949a" stroke-width="1.8"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#8a949a" stroke-width="1.8" stroke-linecap="round"/></svg>
+                  </div>
+                </div>
+                <div class="door-shape" id="unlockDoorRight">
+                  <div class="lock-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="9" rx="2" stroke="#8a949a" stroke-width="1.8"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#8a949a" stroke-width="1.8" stroke-linecap="round"/></svg>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-primary btn-block btn-xl" id="unlockDoorsBtn" style="margin-top:8px;" onclick="unlockDoors()">Unlock Doors</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ SCREEN 2: BOARDING / WELCOME ABOARD ============ -->
+        <section class="view" id="screen-boarding" data-screen="boarding">
+          <div class="map-bg"></div>
+          <div class="center-col">
+            <div class="card boarding-card">
+              <div class="pill green"><span class="dot"></span>Doors unlocked</div>
+              <h1 style="font-size:24px;font-weight:800;color:var(--ink);">Welcome aboard</h1>
+              <div class="boarding-step">
+                <div class="step-visual">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="7" width="18" height="13" rx="2.5" stroke="#1fae60" stroke-width="1.6"/>
+                    <path d="M3 13h18" stroke="#1fae60" stroke-width="1.6"/>
+                    <rect x="7" y="2.6" width="6" height="7.5" rx="1.4" fill="none" stroke="#1fae60" stroke-width="1.6" transform="rotate(-18 10 6.3)"/>
+                  </svg>
+                  <div class="badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                </div>
+                <div class="text">
+                  <div class="t1">Doors unlocked</div>
+                  <div class="t2">Front and rear doors are open for boarding</div>
+                </div>
+              </div>
+              <div class="boarding-step pending" id="seatbelt-step">
+                <div class="step-visual">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 4c3 4 4.5 6 6 9" stroke="#e8a93a" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M19 20c-3-4-4.5-6-6-9" stroke="#e8a93a" stroke-width="3" stroke-linecap="round"/>
+                    <rect x="8.3" y="9.3" width="7.4" height="7.4" rx="1.8" fill="#e8a93a"/>
+                  </svg>
+                </div>
+                <div class="text">
+                  <div class="t1">Please buckle your seatbelt</div>
+                  <div class="t2">Required before the ride can begin</div>
+                </div>
+              </div>
+              <button class="btn btn-primary btn-block btn-xl" onclick="goTo('rideStart')">Start Ride</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ SCREEN 3: RIDE START / F1 ============ -->
+        <section class="view" id="screen-rideStart" data-screen="rideStart">
+          <div class="map-bg"></div>
+          <div class="f1-route-map">
+            <svg width="100%" height="100%" preserveAspectRatio="none">
+              <path class="road-surface" d="M 120 420 Q 320 420 420 320 T 760 160" />
+              <path class="route-line-casing" d="M 120 420 Q 320 420 420 320 T 760 160" />
+              <path class="route-line" d="M 120 420 Q 320 420 420 320 T 760 160" />
+            </svg>
+            <!-- scenery: buildings/trees placed clear of the road curve (offset along its perpendicular), crosswalk crosses it -->
+            <div class="map-building" style="left:14.7%;top:65.5%;width:60px;height:58px;transform:rotate(-28deg);"></div>
+            <div class="map-building" style="left:21.4%;top:61.7%;width:56px;height:50px;transform:rotate(-22deg);"></div>
+            <div class="map-building" style="left:26.8%;top:53.4%;width:54px;height:60px;transform:rotate(-30deg);"></div>
+            <div class="map-building" style="left:33%;top:86%;width:68px;height:44px;transform:rotate(-16deg);"></div>
+            <div class="map-building" style="left:29%;top:41%;width:58px;height:56px;transform:rotate(-26deg);"></div>
+            <div class="map-building" style="left:43%;top:74.5%;width:62px;height:42px;transform:rotate(-14deg);"></div>
+            <div class="map-building" style="left:43%;top:25%;width:56px;height:58px;transform:rotate(-30deg);"></div>
+            <div class="map-building" style="left:57%;top:58%;width:60px;height:42px;transform:rotate(-16deg);"></div>
+            <div class="map-building" style="left:51%;top:19%;width:50px;height:52px;transform:rotate(-24deg);"></div>
+            <div class="map-tree" style="left:19.4%;top:93.9%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
+            <div class="map-tree" style="left:11.9%;top:76.6%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
+            <div class="map-tree" style="left:26.2%;top:90.1%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
+            <div class="map-tree" style="left:28.9%;top:65.5%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
+            <div class="map-tree" style="left:36.7%;top:75.7%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
+            <div class="map-tree" style="left:38.5%;top:47.2%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
+            <div class="map-tree" style="left:47.8%;top:56.4%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
+            <div class="map-tree" style="left:52.65%;top:30.7%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
+            <div class="map-crosswalk" style="left:40%;top:53%;width:48px;height:14px;transform:translate(-50%,-50%) rotate(-30deg);"></div>
+            <div class="map-pin" style="left:10%;top:80%;"></div>
+            <div class="map-pin end" style="left:62%;top:30%;"></div>
+            <div class="car-icon" style="left:10%;top:80%;">
+              <svg viewBox="0 0 48 48">
+                <circle class="pulse" cx="24" cy="24" r="16" fill="rgba(19,181,177,0.18)"/>
+                <g transform="translate(24,24) rotate(-30)">
+                  <rect x="-9.5" y="-9" width="3" height="6" rx="1.4" fill="#06201f"/>
+                  <rect x="6.5" y="-9" width="3" height="6" rx="1.4" fill="#06201f"/>
+                  <rect x="-9.5" y="4" width="3" height="6" rx="1.4" fill="#06201f"/>
+                  <rect x="6.5" y="4" width="3" height="6" rx="1.4" fill="#06201f"/>
+                  <rect x="-8" y="-13" width="16" height="26" rx="7" fill="#13b5b1"/>
+                  <rect x="-8" y="-13" width="16" height="10" rx="7" fill="#ffffff" opacity="0.1"/>
+                  <rect x="-5.3" y="-7" width="10.6" height="14" rx="4" fill="#0a8f8c"/>
+                  <rect x="-9.3" y="-6" width="2" height="3" rx="1" fill="#0a8f8c"/>
+                  <rect x="7.3" y="-6" width="2" height="3" rx="1" fill="#0a8f8c"/>
+                  <circle cx="-3.6" cy="-11.3" r="1" fill="#fff3d0"/>
+                  <circle cx="3.6" cy="-11.3" r="1" fill="#fff3d0"/>
+                  <circle cx="-3.6" cy="11.3" r="0.9" fill="#ff8a80"/>
+                  <circle cx="3.6" cy="11.3" r="0.9" fill="#ff8a80"/>
+                </g>
+              </svg>
+            </div>
+          </div>
+          <div class="card status-card-top">
+            <div>
+              <div class="trip-title">To: Capitol Hill Library</div>
+              <div class="trip-sub">4.2 mi &middot; via Pike St &amp; 12th Ave</div>
+            </div>
+            <div class="pill green"><span class="dot"></span>Autonomous driving active</div>
+          </div>
+          <div class="card f1-bottom-card">
+            <div>
+              <div class="meta-box" style="background:transparent;padding:0;">
+                <div class="label">Estimated arrival</div>
+                <div class="value" style="font-size:26px;">8:52 AM &middot; 14 min</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary" onclick="openCallSupport()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L8 10a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.7 2z" stroke="#10151a" stroke-width="1.7" stroke-linejoin="round"/></svg>
+              Call Support
+            </button>
+            <button class="btn btn-primary" onclick="goTo('inTrip')">View live trip &rarr;</button>
+          </div>
+        </section>
+
+        <!-- ============ SCREEN 4: IN-TRIP (home base) ============ -->
+        <section class="view" id="screen-inTrip" data-screen="inTrip">
+          <div class="trip-map-full map-bg" id="inTripMap">
+            <svg width="100%" height="100%" preserveAspectRatio="none">
+              <path class="road-surface" d="M 160 680 Q 400 600 500 480 T 820 240 T 1000 140" />
+              <path class="route-line-casing" d="M 160 680 Q 400 600 500 480 T 820 240 T 1000 140" />
+              <path class="route-line" id="inTripRoute" d="M 160 680 Q 400 600 500 480 T 820 240 T 1000 140" />
+            </svg>
+            <!-- scenery: buildings/trees placed clear of the road curve, crosswalk + traffic light flank it, destination building sits at the drop-off pin -->
+            <div class="map-building" style="left:15%;top:70.1%;width:56px;height:60px;transform:rotate(-34deg);"></div>
+            <div class="map-building" style="left:22.9%;top:65.05%;width:60px;height:40px;transform:rotate(-22deg);"></div>
+            <div class="map-building" style="left:28%;top:57.2%;width:58px;height:58px;transform:rotate(-30deg);"></div>
+            <div class="map-building" style="left:40.9%;top:77.2%;width:66px;height:42px;transform:rotate(-16deg);"></div>
+            <div class="map-building" style="left:37.7%;top:43.4%;width:58px;height:58px;transform:rotate(-32deg);"></div>
+            <div class="map-building" style="left:49.4%;top:61.6%;width:60px;height:40px;transform:rotate(-16deg);"></div>
+            <div class="map-building" style="left:49.9%;top:27.9%;width:54px;height:58px;transform:rotate(-28deg);"></div>
+            <div class="map-building" style="left:62.2%;top:47.07%;width:60px;height:42px;transform:rotate(-14deg);"></div>
+            <div class="map-building" style="left:65.8%;top:14.9%;width:50px;height:54px;transform:rotate(-24deg);"></div>
+            <div class="map-building" id="inTripDestBuilding" style="left:76%;top:12%;width:90px;height:72px;transform:rotate(-20deg);background:linear-gradient(150deg, rgba(150,196,255,0.7), rgba(66,122,220,0.72));"></div>
+            <div class="map-tree" style="left:15.6%;top:89.8%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
+            <div class="map-tree" style="left:18.4%;top:75.4%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
+            <div class="map-tree" style="left:31.04%;top:77.7%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
+            <div class="map-tree" style="left:31.97%;top:63.3%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
+            <div class="map-tree" style="left:46.1%;top:56.4%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
+            <div class="map-tree" style="left:46.4%;top:40.65%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
+            <div class="map-tree" style="left:53.5%;top:33.6%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
+            <div class="map-tree" style="left:74.2%;top:27.9%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
+            <div class="map-crosswalk" style="left:43.6%;top:52.5%;width:50px;height:14px;transform:translate(-50%,-50%) rotate(-32deg);"></div>
+            <div class="map-traffic-light" style="left:43.6%;top:36.5%;">
+              <svg viewBox="0 0 20 40"><rect x="2" y="2" width="16" height="30" rx="7" fill="#1b2028" stroke="rgba(255,255,255,0.25)" stroke-width="1"/><circle cx="10" cy="11" r="4" fill="#3a2020"/><circle cx="10" cy="23" r="4" fill="#2fdc6a"><animate attributeName="opacity" values="1;0.45;1" dur="1.8s" repeatCount="indefinite"/></circle><rect x="8" y="32" width="4" height="7" fill="#1b2028"/></svg>
+            </div>
+            <div class="map-pin end" style="left:78%;top:18%;"></div>
+            <div class="car-icon" id="inTripCar" style="left:160px;top:680px;">
+              <svg viewBox="0 0 48 48">
+                <circle class="pulse" cx="24" cy="24" r="16" fill="rgba(19,181,177,0.35)"/>
+                <g transform="translate(24,24) rotate(-40)">
+                  <rect x="-9.5" y="-9" width="3" height="6" rx="1.4" fill="#06201f"/>
+                  <rect x="6.5" y="-9" width="3" height="6" rx="1.4" fill="#06201f"/>
+                  <rect x="-9.5" y="4" width="3" height="6" rx="1.4" fill="#06201f"/>
+                  <rect x="6.5" y="4" width="3" height="6" rx="1.4" fill="#06201f"/>
+                  <rect x="-8" y="-13" width="16" height="26" rx="7" fill="#13b5b1"/>
+                  <rect x="-8" y="-13" width="16" height="10" rx="7" fill="#ffffff" opacity="0.1"/>
+                  <rect x="-5.3" y="-7" width="10.6" height="14" rx="4" fill="#0a8f8c"/>
+                  <rect x="-9.3" y="-6" width="2" height="3" rx="1" fill="#0a8f8c"/>
+                  <rect x="7.3" y="-6" width="2" height="3" rx="1" fill="#0a8f8c"/>
+                  <circle cx="-3.6" cy="-11.3" r="1" fill="#fff3d0"/>
+                  <circle cx="3.6" cy="-11.3" r="1" fill="#fff3d0"/>
+                  <circle cx="-3.6" cy="11.3" r="0.9" fill="#ff8a80"/>
+                  <circle cx="3.6" cy="11.3" r="0.9" fill="#ff8a80"/>
+                </g>
+              </svg>
+            </div>
+          </div>
+
+          <div class="persistent-topcard">
+            <div class="card next-turn-card">
+              <div class="turn-arrow">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#4c8dff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <div class="label">Next</div>
+                <div class="value">Turn right on 12th Ave &middot; 0.3 mi</div>
+              </div>
+            </div>
+            <div class="card ads-indicator-pill">
+              <div class="pill green"><span class="dot"></span>Autonomous driving active</div>
+            </div>
+          </div>
+
+          <div class="corner-controls">
+            <div class="icon-btn sos" title="Emergency / Help" onclick="goTo('sos')">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2a7 7 0 0 0-7 7v3.3L3.4 16a1 1 0 0 0 .9 1.5h15.4a1 1 0 0 0 .9-1.5L19 12.3V9a7 7 0 0 0-7-7z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/><path d="M9.5 19a2.5 2.5 0 0 0 5 0" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </div>
+          </div>
+
+          <div class="demo-trigger-dock">
+            <div class="demo-chip" onclick="triggerPedestrian()">demo: pedestrian detected &rarr;</div>
+            <div class="demo-chip" onclick="goTo('critical')">demo: critical warning &rarr;</div>
+          </div>
+
+          <div class="bottom-stats-bar">
+            <div class="card stat-card">
+              <div class="label">Speed</div>
+              <div class="value">22<small> mph</small></div>
+            </div>
+            <div class="card stat-card">
+              <div class="label">ETA</div>
+              <div class="value">9<small> min</small></div>
+            </div>
+            <button class="card request-stop-btn btn" style="color:var(--ink);font-weight:700;font-size:15px;" onclick="goTo('stopRequest')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#10151a" stroke-width="1.8"/><rect x="9" y="9" width="6" height="6" rx="1" fill="#10151a"/></svg>
+              Request Stop
+            </button>
+            <div class="card stat-card" style="cursor:pointer;min-width:90px;align-items:center;" onclick="goTo('arrival')" title="Exit / end trip (demo)">
+              <div class="label">Exit</div>
+              <div class="value" style="font-size:18px;display:flex;align-items:center;gap:6px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 3h4a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M14.5 12H3" stroke="#10151a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- F2 banner overlay lives on top of this screen -->
+          <div class="card env-banner" id="envBanner">
+            <div class="icon-wrap">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="2" fill="#e8a93a"/><path d="M12 8v6M8 12l-2 7M16 12l2 7M9 10l-4 2M15 10l4 2" stroke="#e8a93a" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </div>
+            <div class="text">
+              <div class="t1">Pedestrian detected ahead</div>
+              <div class="t2">Slowing down to allow them to cross safely.</div>
+            </div>
+            <button class="dismiss" onclick="dismissBanner()">&times;</button>
+          </div>
+        </section>
+
+        <!-- ============ SCREEN 6: STOP REQUEST / F3 ============ -->
+        <section class="view" id="screen-stopRequest" data-screen="stopRequest">
+          <div class="map-bg"></div>
+          <div class="back-affordance">
+            <div class="icon-btn" onclick="goTo('inTrip')" title="Back">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+
+          <!-- Step 1: choose -->
+          <div class="card sheet" id="stopStep1">
+            <div class="sheet-handle"></div>
+            <h2>Request a stop</h2>
+            <div class="sub">Choose how you'd like the vehicle to stop. The vehicle will evaluate whether your location is safe.</div>
+            <div class="stop-option-row">
+              <div class="stop-option" onclick="requestStop('here')">
+                <div class="t1">Stop here</div>
+                <div class="t2">Ask the vehicle to pull over at your current location, if safe.</div>
+              </div>
+              <div class="stop-option" onclick="requestStop('next')">
+                <div class="t1">Stop at next safe location</div>
+                <div class="t2">Let the vehicle choose the nearest appropriate place to stop.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: evaluating -->
+          <div class="card sheet" id="stopStep2" style="display:none;">
+            <div class="sheet-handle"></div>
+            <div class="sos-routing">
+              <div class="spinner"></div>
+              <div class="t1">Finding a safe place to stop&hellip;</div>
+              <div class="t2">The vehicle is evaluating traffic, lane position, and nearby hazards.</div>
+            </div>
+          </div>
+
+          <!-- Step 3a: success -->
+          <div class="card sheet" id="stopStep3Safe" style="display:none;">
+            <div class="sheet-handle"></div>
+            <div class="pill green" style="align-self:flex-start;"><span class="dot"></span>Safe location confirmed</div>
+            <h2>Stopping in 200 ft</h2>
+            <div class="sub">The vehicle will pull over on the right as soon as it's safe to do so.</div>
+            <button class="btn btn-secondary btn-block" onclick="goTo('inTrip')">Back to trip</button>
+          </div>
+
+          <!-- Step 3b: declined -->
+          <div class="card sheet" id="stopStep3Unsafe" style="display:none;">
+            <div class="sheet-handle"></div>
+            <div class="pill amber" style="align-self:flex-start;"><span class="dot"></span>Current spot not ideal</div>
+            <h2>Sorry, this isn't a safe place to stop</h2>
+            <div class="sub">This location is in an active traffic lane. The next safe spot is in 0.3 mi — about 1 minute away.</div>
+            <button class="btn btn-primary btn-block" onclick="goTo('inTrip')">OK, continue to next safe spot</button>
+          </div>
+
+          <div class="demo-branch-row">
+            <span class="lbl">presenter demo:</span>
+            <button class="btn btn-sm btn-secondary" onclick="forceStopOutcome('safe')">force &rarr; safe-location path</button>
+            <button class="btn btn-sm btn-secondary" onclick="forceStopOutcome('unsafe')">force &rarr; unsafe-location path</button>
+          </div>
+        </section>
+
+        <!-- ============ SCREEN 7: CRITICAL WARNING / F4 ============ -->
+        <section class="view" id="screen-critical" data-screen="critical">
+          <div class="critical-overlay">
+            <div class="critical-icon">
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 20h20L12 2z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 9v5M12 17h.01" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>
+            </div>
+            <h1>Hazard ahead. Vehicle is taking evasive action.</h1>
+            <div class="sub">Please remain seated and hold on.</div>
+            <div class="btn-continue-wrap" id="criticalContinueWrap"></div>
+          </div>
+        </section>
+
+        <!-- ============ SCREEN 8: MRM RECOVERY / F5 ============ -->
+        <section class="view" id="screen-recovery" data-screen="recovery">
+          <div class="map-bg"></div>
+          <div class="center-col">
+            <div class="card recovery-card">
+              <div class="pill blue recovery-status-badge"><span class="dot"></span>Vehicle safely stopped</div>
+              <h2>You're safe. Here's what happened.</h2>
+              <div class="recovery-explain">A hazard was detected ahead. The vehicle performed a safety stop and pulled over out of the active lane of travel.</div>
+
+              <div class="timeline" id="recoveryTimeline">
+                <div class="timeline-step done" data-step="0">
+                  <div class="node-col"><div class="node"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="line"></div></div>
+                  <div class="content"><div class="t1">Vehicle safely stopped</div><div class="t2">Pulled over out of the active lane.</div></div>
+                </div>
+                <div class="timeline-step active" data-step="1">
+                  <div class="node-col"><div class="node"></div><div class="line"></div></div>
+                  <div class="content"><div class="t1">Assessing situation&hellip;</div><div class="t2">Checking surroundings before continuing.</div></div>
+                </div>
+                <div class="timeline-step pending" data-step="2">
+                  <div class="node-col"><div class="node"></div><div class="line"></div></div>
+                  <div class="content"><div class="t1">Situation resolved</div><div class="t2">Hazard has cleared.</div></div>
+                </div>
+                <div class="timeline-step pending" data-step="3">
+                  <div class="node-col"><div class="node"></div><div class="line"></div></div>
+                  <div class="content"><div class="t1">Trip will resume shortly</div><div class="t2">Preparing to re-enter traffic.</div></div>
+                </div>
+                <div class="timeline-step pending" data-step="4">
+                  <div class="node-col"><div class="node"></div></div>
+                  <div class="content"><div class="t1">Resuming trip</div><div class="t2">Continuing toward your destination.</div></div>
+                </div>
+              </div>
+
+              <button class="btn btn-primary btn-block" id="recoveryNextBtn" onclick="advanceRecovery()">Next update</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ SCREEN 9: SOS / EMERGENCY / F6 ============ -->
+        <section class="view" id="screen-sos" data-screen="sos">
+          <div class="map-bg"></div>
+          <div class="sos-overlay">
+            <div class="card sos-card" id="sosStep1">
+              <h2>Need help?</h2>
+              <button class="sos-option" onclick="sosRoute('call')">
+                <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L8 10a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.7 2z" stroke="#10151a" stroke-width="1.7" stroke-linejoin="round"/></svg></div>
+                <div><div class="t1">Call for help</div><div class="t2">Speak with a live support agent</div></div>
+              </button>
+              <button class="sos-option" onclick="sosRoute('report')">
+                <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 21V4a1 1 0 0 1 1-1h11l4 4v3M4 14h7M4 10h4" stroke="#10151a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18" cy="17" r="4.2" stroke="#10151a" stroke-width="1.7"/><path d="M18 15.3V17l1.1 1.1" stroke="#10151a" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+                <div><div class="t1">Report a safety concern</div><div class="t2">Non-urgent feedback about this ride</div></div>
+              </button>
+              <button class="sos-option emergency" onclick="sosRoute('emergency')">
+                <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2a7 7 0 0 0-7 7v3.3L3.4 16a1 1 0 0 0 .9 1.5h15.4a1 1 0 0 0 .9-1.5L19 12.3V9a7 7 0 0 0-7-7z" stroke="#e5484d" stroke-width="1.8" stroke-linejoin="round"/><path d="M9.5 19a2.5 2.5 0 0 0 5 0" stroke="#e5484d" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+                <div><div class="t1">Emergency — contact support now</div><div class="t2">For urgent safety or security issues</div></div>
+              </button>
+              <button class="btn btn-secondary btn-block" onclick="goTo('inTrip')">Cancel</button>
+            </div>
+
+            <div class="card sos-card" id="sosStep2" style="display:none;">
+              <div class="sos-routing">
+                <div class="spinner"></div>
+                <div class="t1" id="sosRoutingText">Connecting you to a live support agent&hellip;</div>
+                <div class="t2">Please stay on this screen.</div>
+              </div>
+            </div>
+
+            <div class="card sos-card" id="sosStep3" style="display:none;">
+              <div class="sos-routing">
+                <div class="pill green"><span class="dot"></span><span id="sosFinalPill">Agent connected</span></div>
+                <div class="t1" id="sosFinalText">You're connected with Priya from Waymo Support.</div>
+                <div class="t2" id="sosFinalSub">Estimated response: live now</div>
+                <button class="btn btn-primary btn-block" onclick="goTo('inTrip')" style="margin-top:8px;">Return to trip</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ SCREEN 10: ARRIVAL ============ -->
+        <section class="view" id="screen-arrival" data-screen="arrival">
+          <div class="map-bg"></div>
+          <div class="center-col">
+            <div class="card arrival-card">
+              <div class="arrival-check">
+                <svg width="38" height="38" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#1fae60" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <h1>You've arrived</h1>
+              <div class="welcome-sub">Capitol Hill Library &middot; Trip duration 16 min</div>
+              <div class="trip-meta-row">
+                <div class="meta-box">
+                  <div class="label">Distance</div>
+                  <div class="value">4.2 mi</div>
+                </div>
+                <div class="meta-box">
+                  <div class="label">Trip cost</div>
+                  <div class="value">$11.40</div>
+                </div>
+              </div>
+              <div style="margin-top:6px;">
+                <div class="welcome-sub" style="margin-bottom:10px;">How was your ride?</div>
+                <div class="stars" id="ratingStars">
+                  <span class="star" data-v="1">&#9733;</span>
+                  <span class="star" data-v="2">&#9733;</span>
+                  <span class="star" data-v="3">&#9733;</span>
+                  <span class="star" data-v="4">&#9733;</span>
+                  <span class="star" data-v="5">&#9733;</span>
+                </div>
+              </div>
+              <button class="btn btn-primary btn-block" style="margin-top:10px;" onclick="goTo('welcome')">Return to Welcome</button>
+            </div>
+          </div>
+        </section>
+
+      </div><!-- /viewport -->
+
+      <!-- CALL SUPPORT MODAL — overlay, not a screen; available on top of any active screen -->
+      <div class="call-support-overlay" id="callSupportOverlay">
+        <div class="card call-support-card" id="callSupportStep1">
+          <div class="cs-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L8 10a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.7 2z" stroke="#4c8dff" stroke-width="1.7" stroke-linejoin="round"/></svg>
+          </div>
+          <h2>Call Support?</h2>
+          <div class="sub">You'll be connected with a live Waymo support agent. You can call anytime you have a question about your ride — not only for emergencies.</div>
+          <div class="call-support-actions">
+            <button class="btn btn-secondary btn-block" onclick="closeCallSupport()">Cancel</button>
+            <button class="btn btn-primary btn-block" onclick="confirmCallSupport()">Call Support</button>
+          </div>
+        </div>
+        <div class="card call-support-card" id="callSupportStep2" style="display:none;">
+          <div class="sos-routing">
+            <div class="spinner"></div>
+            <div class="t1">Connecting you to a live support agent&hellip;</div>
+            <div class="t2">Please stay on this screen.</div>
+          </div>
+          <button class="btn btn-secondary btn-block" onclick="closeCallSupport()" style="margin-top:4px;">Cancel call</button>
+        </div>
+        <div class="card call-support-card" id="callSupportStep3" style="display:none;">
+          <div class="sos-routing">
+            <div class="pill green"><span class="dot"></span>Agent connected</div>
+            <div class="t1">You're connected with Priya from Waymo Support.</div>
+            <div class="t2">Estimated response: live now</div>
+          </div>
+          <button class="btn btn-primary btn-block" onclick="closeCallSupport()" style="margin-top:4px;">End call</button>
+        </div>
+      </div>
+
+    </div><!-- /screen -->
+  </div><!-- /bezel -->
+</div><!-- /tablet-shell -->
+</div><!-- /tablet-scale-wrap -->
+
+<!-- ========================================================= -->
+<!-- PRESENTER / DEMO NAV STRIP — intentionally NOT part of the product UI -->
+<!-- ========================================================= -->
+<div class="presenter-tool">
+  <div class="presenter-header">
+    <div class="ph-title">Presenter Tool — direct screen &amp; function jump (not part of product UI)</div>
+    <button class="ph-toggle" onclick="togglePresenter()">Hide/Show</button>
+  </div>
+  <div class="presenter-body" id="presenterBody">
+    <!-- buttons injected by JS from SCREEN_META -->
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   SCREEN METADATA — drives presenter nav + citation blurbs
+   ============================================================ */
+var SCREEN_META = [
+  { id:'welcome', name:'1. Welcome / Vehicle Arriving', fn:null,
+    cite:null },
+  { id:'carArrived', name:'2. Vehicle Has Arrived', fn:null,
+    cite:null },
+  { id:'unlockDoors', name:'3. Unlock Doors', fn:null,
+    cite:null },
+  { id:'boarding', name:'4. Welcome Aboard', fn:null,
+    cite:null },
+  { id:'rideStart', name:'5. Ride Start / Trip & ADS Status', fn:'F1',
+    cite:'Feierle, Danner, Steininger &amp; Bengler (2020), <i>Information</i>, doi.org/10.3390/info11020062 — passengers want route/status info plus short rationale for maneuvers, beyond raw speed/system status. Also: Xie, Wang &amp; He (2025), <i>Applied Ergonomics</i>, doi.org/10.1016/j.apergo.2025.104580 — prioritize a clear, reassuring first-ride experience with simple ride-readiness/status info over exhaustive driving data.' },
+  { id:'inTrip', name:'6. In-Trip Map + Directions (home)', fn:'F1',
+    cite:'Feierle, Danner, Steininger &amp; Bengler (2020), <i>Information</i>, doi.org/10.3390/info11020062 — passengers want route/status info plus short rationale for maneuvers, beyond raw speed/system status. Also: Xie, Wang &amp; He (2025), <i>Applied Ergonomics</i>, doi.org/10.1016/j.apergo.2025.104580 — prioritize a clear, reassuring first-ride experience with simple ride-readiness/status info over exhaustive driving data.' },
+  { id:'inTrip', name:'7. Environmental Awareness Banner', fn:'F2', trigger:'pedestrian',
+    cite:'Fröhlich, Schatz, Buchta, Schrammel, Suette &amp; Tscheligi (2019), <i>i-com</i>, doi.org/10.1515/icom-2018-0032 — first-time autonomous bus passengers value screens showing what the vehicle detects and plans before acting, especially for hazards; design takeaway "Pedestrian detected—slowing down."' },
+  { id:'stopRequest', name:'8. Stop / Exit Request Flow', fn:'F3',
+    cite:'Kuck, Wagner-Douglas, Wirtz &amp; Ladwig (2025), <i>AHFE</i>, doi.org/10.54941/ahfe1005861 — inclusive shuttle passengers need clear info on destination/next stop/door status via redundant (visual+audio) channels, including people with cognitive/physical/visual impairments.' },
+  { id:'critical', name:'9. Critical Safety Warning', fn:'F4',
+    cite:'Wang, Wu, Ma, Wang, Gan, Liu &amp; Yang (2022), <i>Applied Ergonomics</i>, doi.org/10.1016/j.apergo.2021.103638 — high-mapping (iconic) audiovisual multimodal warnings improve recognition speed/response over unimodal warnings, supporting urgent, redundant, instruction-style critical alerts.' },
+  { id:'recovery', name:'10. Minimal-Risk Maneuver + Recovery', fn:'F5',
+    cite:'Brandt, Wilbrink &amp; Oehl (2024), <i>Transportation Research Part F</i>, doi.org/10.1016/j.trf.2024.09.012 — DLR iHMI transparency during Minimal Risk Maneuvers: observability &amp; reasoning improve passenger understanding/predictability during MRMs. Also: Lohaus et al. (2024), <i>Computers in Human Behavior</i>, doi.org/10.1016/j.chb.2024.108387 — trust drops sharply right after a dangerous event but recovers as the ride continues if the system keeps communicating ("Vehicle safely stopped," "Situation resolved," "Trip will resume shortly").' },
+  { id:'sos', name:'11. Emergency / Security Assistance', fn:'F6',
+    cite:'Hartwich, Hollander, Johannmeyer &amp; Krems (2021), <i>Frontiers in Human Dynamics</i>, doi.org/10.3389/fhumd.2021.669030 — acknowledgment and responsive communication (adapted to user trust/need) builds trust; users with lower initial trust especially benefit from continuous acknowledgment during uncertain/assistance-seeking moments. May also cite Naujoks, Wiedemann, Schömig, Hergeth &amp; Keinath (2019), <i>Transportation Research Part F</i>, on HMI guideline/heuristic design principles as general support.' },
+  { id:'arrival', name:'12. Arrival / Trip End', fn:null,
+    cite:null }
+];
+
+/* ============================================================
+   CORE SCREEN SWITCHER
+   ============================================================ */
+function goTo(screenId){
+  var views = document.querySelectorAll('.view');
+  for (var i=0;i<views.length;i++){
+    views[i].classList.remove('active');
+  }
+  var target = document.getElementById('screen-'+screenId);
+  if (target){
+    target.classList.add('active');
+  }
+  // Reset transient states whenever we (re)enter certain screens
+  if (screenId === 'stopRequest') resetStopRequest();
+  if (screenId === 'sos') resetSos();
+  if (screenId === 'critical') startCriticalSequence();
+  if (screenId === 'recovery') resetRecovery();
+  if (screenId === 'inTrip') hideBannerImmediate();
+  if (screenId === 'welcome') startWelcomeCountdown();
+  if (screenId === 'unlockDoors') resetUnlockDoors();
+}
+
+/* ============================================================
+   CLOCK (chrome only, not functional beyond display)
+   ============================================================ */
+function tickClock(){
+  var el = document.getElementById('clock');
+  var now = new Date();
+  var h = now.getHours();
+  var m = now.getMinutes();
+  var ampm = h >= 12 ? 'PM' : 'AM';
+  var h12 = h % 12; if (h12 === 0) h12 = 12;
+  var mStr = (m < 10 ? '0' : '') + m;
+  el.textContent = h12 + ':' + mStr + ' ' + ampm;
+}
+tickClock();
+setInterval(tickClock, 15000);
+
+/* ============================================================
+   SCREEN 1: WELCOME — simple ETA countdown + car creep
+   ============================================================ */
+var WELCOME_TOTAL_SECONDS = 15; // actual real-time delay before arrival; displayed as "1 min away" throughout
+var welcomeEtaSeconds = WELCOME_TOTAL_SECONDS;
+var welcomeTimer = null;
+function startWelcomeCountdown(){
+  if (welcomeTimer) clearInterval(welcomeTimer);
+  welcomeEtaSeconds = WELCOME_TOTAL_SECONDS;
+  updateWelcomeEta();
+  welcomeTimer = setInterval(function(){
+    welcomeEtaSeconds -= 1;
+    if (welcomeEtaSeconds <= 0){
+      clearInterval(welcomeTimer);
+      welcomeTimer = null;
+      updateWelcomeEta();
+      goTo('carArrived');
+      return;
+    }
+    updateWelcomeEta();
+    // move the car along the mini journey strip so its approach is visible, not hidden behind the card
+    var car = document.getElementById('welcome-car');
+    if (car){
+      var progress = 1 - (welcomeEtaSeconds/WELCOME_TOTAL_SECONDS); // 0 -> 1
+      var left = 7 + progress*86; // 7% -> 93%
+      car.style.left = left+'%';
+    }
+  }, 1000);
+}
+function updateWelcomeEta(){
+  var el = document.getElementById('welcome-eta');
+  if (!el) return;
+  if (welcomeEtaSeconds <= 0){
+    el.innerHTML = '0<span>arriving now</span>';
+    return;
+  }
+  var mins = Math.max(1, Math.ceil(welcomeEtaSeconds/60));
+  el.innerHTML = mins + '<span>min away</span>';
+}
+
+/* ============================================================
+   SCREEN 1c: UNLOCK DOORS — unlock doors on tap, then advance
+   ============================================================ */
+function resetUnlockDoors(){
+  var left = document.getElementById('unlockDoorLeft');
+  var right = document.getElementById('unlockDoorRight');
+  var btn = document.getElementById('unlockDoorsBtn');
+  if (left) left.classList.remove('unlocked');
+  if (right) right.classList.remove('unlocked');
+  if (btn){ btn.disabled = false; btn.textContent = 'Unlock Doors'; }
+}
+function unlockDoors(){
+  var left = document.getElementById('unlockDoorLeft');
+  var right = document.getElementById('unlockDoorRight');
+  var btn = document.getElementById('unlockDoorsBtn');
+  btn.disabled = true;
+  btn.textContent = 'Unlocking…';
+  setTimeout(function(){
+    left.classList.add('unlocked');
+    right.classList.add('unlocked');
+    btn.textContent = 'Doors Unlocked';
+    setTimeout(function(){
+      goTo('boarding');
+    }, 900);
+  }, 700);
+}
+
+/* ============================================================
+   SCREEN 4: IN-TRIP — car progression along home route
+   ============================================================ */
+var inTripProgress = 0;
+var inTripTimer = null;
+var inTripPathPoints = [
+  {left:160, top:680},
+  {left:420, top:560},
+  {left:620, top:400},
+  {left:820, top:240},
+  {left:980, top:150}
+];
+function animateInTripCar(){
+  var car = document.getElementById('inTripCar');
+  if (!car) return;
+  if (inTripTimer) clearInterval(inTripTimer);
+  inTripProgress = 0;
+  inTripTimer = setInterval(function(){
+    inTripProgress = (inTripProgress + 1) % inTripPathPoints.length;
+    var p = inTripPathPoints[inTripProgress];
+    car.style.left = p.left+'px';
+    car.style.top = p.top+'px';
+  }, 2600);
+}
+animateInTripCar();
+
+/* ============================================================
+   SCREEN 5: F2 — Environmental awareness banner (pedestrian)
+   ============================================================ */
+var bannerAutoHideTimer = null;
+function triggerPedestrian(){
+  goTo('inTrip'); // ensure we're on the base screen the banner overlays
+  var banner = document.getElementById('envBanner');
+  var car = document.getElementById('inTripCar');
+  banner.classList.add('show');
+  if (car) car.classList.add('slowing');
+  if (inTripTimer) { clearInterval(inTripTimer); inTripTimer = null; } // car visibly slows/stops
+  if (bannerAutoHideTimer) clearTimeout(bannerAutoHideTimer);
+  bannerAutoHideTimer = setTimeout(dismissBanner, 5000);
+}
+function dismissBanner(){
+  var banner = document.getElementById('envBanner');
+  var car = document.getElementById('inTripCar');
+  banner.classList.remove('show');
+  if (car) car.classList.remove('slowing');
+  if (bannerAutoHideTimer){ clearTimeout(bannerAutoHideTimer); bannerAutoHideTimer = null; }
+  if (!inTripTimer) animateInTripCar(); // resume driving
+}
+function hideBannerImmediate(){
+  var banner = document.getElementById('envBanner');
+  if (banner) banner.classList.remove('show');
+  var car = document.getElementById('inTripCar');
+  if (car) car.classList.remove('slowing');
+}
+
+/* ============================================================
+   SCREEN 6: F3 — Stop request flow
+   ============================================================ */
+function resetStopRequest(){
+  document.getElementById('stopStep1').style.display = 'flex';
+  document.getElementById('stopStep2').style.display = 'none';
+  document.getElementById('stopStep3Safe').style.display = 'none';
+  document.getElementById('stopStep3Unsafe').style.display = 'none';
+}
+var stopOutcomeTimer = null;
+function requestStop(kind){
+  document.getElementById('stopStep1').style.display = 'none';
+  document.getElementById('stopStep2').style.display = 'flex';
+  // Demo heuristic: "here" sometimes isn't safe, "next safe location" always resolves safely
+  var outcome = (kind === 'here') ? 'unsafe' : 'safe';
+  if (stopOutcomeTimer) clearTimeout(stopOutcomeTimer);
+  stopOutcomeTimer = setTimeout(function(){
+    showStopOutcome(outcome);
+  }, 1800);
+}
+function forceStopOutcome(outcome){
+  document.getElementById('stopStep1').style.display = 'none';
+  document.getElementById('stopStep2').style.display = 'flex';
+  if (stopOutcomeTimer) clearTimeout(stopOutcomeTimer);
+  stopOutcomeTimer = setTimeout(function(){
+    showStopOutcome(outcome);
+  }, 1200);
+}
+function showStopOutcome(outcome){
+  document.getElementById('stopStep2').style.display = 'none';
+  if (outcome === 'safe'){
+    document.getElementById('stopStep3Safe').style.display = 'flex';
+  } else {
+    document.getElementById('stopStep3Unsafe').style.display = 'flex';
+  }
+}
+
+/* ============================================================
+   SCREEN 7: F4 — Critical warning (instruction-following, delayed continue)
+   ============================================================ */
+var criticalAutoAdvanceTimer = null;
+function startCriticalSequence(){
+  var wrap = document.getElementById('criticalContinueWrap');
+  wrap.innerHTML = ''; // no dismiss button available immediately
+  if (criticalAutoAdvanceTimer) clearTimeout(criticalAutoAdvanceTimer);
+  // After a short mandatory delay, reveal a Continue action AND auto-advance
+  // regardless, reflecting that this is instruction-following, not a dialogue.
+  setTimeout(function(){
+    var btn = document.createElement('button');
+    btn.className = 'btn btn-outline';
+    btn.textContent = 'Continue';
+    btn.onclick = function(){
+      if (criticalAutoAdvanceTimer) clearTimeout(criticalAutoAdvanceTimer);
+      goTo('recovery');
+    };
+    wrap.appendChild(btn);
+  }, 2500);
+  criticalAutoAdvanceTimer = setTimeout(function(){
+    goTo('recovery');
+  }, 5000);
+}
+
+/* ============================================================
+   SCREEN 8: F5 — Minimal-risk maneuver recovery, multi-step timeline
+   ============================================================ */
+var recoveryStepIndex = 1; // step 0 ("safely stopped") already done on entry
+function resetRecovery(){
+  recoveryStepIndex = 1;
+  var steps = document.querySelectorAll('#recoveryTimeline .timeline-step');
+  steps.forEach(function(stepEl, idx){
+    stepEl.classList.remove('done','active','pending');
+    if (idx === 0) stepEl.classList.add('done');
+    else if (idx === 1) stepEl.classList.add('active');
+    else stepEl.classList.add('pending');
+  });
+  var btn = document.getElementById('recoveryNextBtn');
+  btn.disabled = false;
+  btn.textContent = 'Next update';
+}
+function advanceRecovery(){
+  var steps = document.querySelectorAll('#recoveryTimeline .timeline-step');
+  if (recoveryStepIndex >= steps.length - 1){
+    // Final step already active -> mark done and return to trip
+    steps[recoveryStepIndex].classList.remove('active');
+    steps[recoveryStepIndex].classList.add('done');
+    goTo('inTrip');
+    return;
+  }
+  // mark current active step as done
+  steps[recoveryStepIndex].classList.remove('active');
+  steps[recoveryStepIndex].classList.add('done');
+  recoveryStepIndex += 1;
+  steps[recoveryStepIndex].classList.remove('pending');
+  steps[recoveryStepIndex].classList.add('active');
+
+  var btn = document.getElementById('recoveryNextBtn');
+  if (recoveryStepIndex === steps.length - 1){
+    btn.textContent = 'Resume trip';
+  } else {
+    btn.textContent = 'Next update';
+  }
+}
+
+/* ============================================================
+   SCREEN 9: F6 — SOS / Emergency assistance routing
+   ============================================================ */
+var sosRouteTimer = null;
+function resetSos(){
+  document.getElementById('sosStep1').style.display = 'flex';
+  document.getElementById('sosStep2').style.display = 'none';
+  document.getElementById('sosStep3').style.display = 'none';
+  if (sosRouteTimer) clearTimeout(sosRouteTimer);
+}
+function sosRoute(kind){
+  document.getElementById('sosStep1').style.display = 'none';
+  document.getElementById('sosStep2').style.display = 'flex';
+
+  var routingText = document.getElementById('sosRoutingText');
+  var finalPill = document.getElementById('sosFinalPill');
+  var finalText = document.getElementById('sosFinalText');
+  var finalSub = document.getElementById('sosFinalSub');
+
+  if (kind === 'call'){
+    routingText.textContent = 'Connecting you to a live support agent…';
+  } else if (kind === 'report'){
+    routingText.textContent = 'Submitting your report to the safety team…';
+  } else {
+    routingText.textContent = 'Emergency request received — contacting support now…';
+  }
+
+  if (sosRouteTimer) clearTimeout(sosRouteTimer);
+  sosRouteTimer = setTimeout(function(){
+    document.getElementById('sosStep2').style.display = 'none';
+    document.getElementById('sosStep3').style.display = 'flex';
+    if (kind === 'call'){
+      finalPill.textContent = 'Agent connected';
+      finalText.textContent = "You're connected with Priya from Waymo Support.";
+      finalSub.textContent = 'Estimated response: live now';
+    } else if (kind === 'report'){
+      finalPill.textContent = 'Report submitted';
+      finalText.textContent = 'Thanks — your safety report has been logged and will be reviewed.';
+      finalSub.textContent = 'A specialist may follow up within 24 hours';
+    } else {
+      finalPill.textContent = 'Help is on the way';
+      finalText.textContent = 'Emergency support has been notified of your location and ride.';
+      finalSub.textContent = 'Estimated connection time: under 60 seconds';
+    }
+  }, 2200);
+}
+
+/* ============================================================
+   CALL SUPPORT MODAL — non-emergency support access, available
+   from Ride Start (and reusable from anywhere) via openCallSupport()
+   ============================================================ */
+var callSupportTimer = null;
+function openCallSupport(){
+  document.getElementById('callSupportStep1').style.display = 'flex';
+  document.getElementById('callSupportStep2').style.display = 'none';
+  document.getElementById('callSupportStep3').style.display = 'none';
+  document.getElementById('callSupportOverlay').classList.add('show');
+}
+function confirmCallSupport(){
+  document.getElementById('callSupportStep1').style.display = 'none';
+  document.getElementById('callSupportStep2').style.display = 'flex';
+  if (callSupportTimer) clearTimeout(callSupportTimer);
+  callSupportTimer = setTimeout(function(){
+    document.getElementById('callSupportStep2').style.display = 'none';
+    document.getElementById('callSupportStep3').style.display = 'flex';
+  }, 2200);
+}
+function closeCallSupport(){
+  if (callSupportTimer){ clearTimeout(callSupportTimer); callSupportTimer = null; }
+  document.getElementById('callSupportOverlay').classList.remove('show');
+}
+
+/* ============================================================
+   SCREEN 10: ARRIVAL — star rating interaction
+   ============================================================ */
+(function(){
+  var stars = document.querySelectorAll('#ratingStars .star');
+  stars.forEach(function(star){
+    star.addEventListener('click', function(){
+      var v = parseInt(star.getAttribute('data-v'), 10);
+      stars.forEach(function(s){
+        var sv = parseInt(s.getAttribute('data-v'), 10);
+        s.classList.toggle('filled', sv <= v);
+      });
+    });
+  });
+})();
+
+/* ============================================================
+   PRESENTER / DEMO NAV STRIP — build buttons + citation toggles
+   ============================================================ */
+function buildPresenterNav(){
+  var container = document.getElementById('presenterBody');
+  var html = '';
+  SCREEN_META.forEach(function(meta, idx){
+    var fnBadge = meta.fn ? '<span class="fn">'+meta.fn+'</span>' : '<span class="fn none">—</span>';
+    var citeBlock = '';
+    if (meta.cite){
+      citeBlock = '<span class="cite-toggle-link" data-idx="'+idx+'" onclick="event.stopPropagation(); toggleCite('+idx+');">show research citation</span>' +
+                  '<div class="cite">'+meta.cite+'</div>';
+    }
+    html += '<button class="pnav-btn" id="pnav-'+idx+'" onclick="presenterJump('+idx+')">' +
+              fnBadge + '<span class="scr-name">'+meta.name+'</span>' +
+              citeBlock +
+            '</button>';
+  });
+  container.innerHTML = html;
+}
+function presenterJump(idx){
+  var meta = SCREEN_META[idx];
+  goTo(meta.id);
+  if (meta.trigger === 'pedestrian'){
+    // slight delay so inTrip is active first, then fire the banner
+    setTimeout(triggerPedestrian, 350);
+  }
+}
+function toggleCite(idx){
+  var btn = document.getElementById('pnav-'+idx);
+  btn.classList.toggle('cite-open');
+  var link = btn.querySelector('.cite-toggle-link');
+  if (link){
+    link.textContent = btn.classList.contains('cite-open') ? 'hide research citation' : 'show research citation';
+  }
+}
+function togglePresenter(){
+  document.getElementById('presenterBody').classList.toggle('collapsed');
+}
+buildPresenterNav();
+
+/* ============================================================
+   MOBILE / RESPONSIVE FIT — scales the whole tablet frame (and
+   every fixed-px element inside it) uniformly to fit the viewport,
+   so proportions stay correct on phones instead of just shrinking
+   the outer box and leaving fonts/icons mismatched.
+   ============================================================ */
+function fitTabletShell(){
+  var shell = document.getElementById('tabletShell');
+  var wrap = document.getElementById('tabletScaleWrap');
+  if (!shell || !wrap) return;
+  var naturalW = shell.offsetWidth;
+  var naturalH = shell.offsetHeight;
+  var available = window.innerWidth - 40; // matches body's 20px side padding
+  var scale = Math.min(1, available / naturalW);
+  shell.style.transform = 'scale(' + scale + ')';
+  wrap.style.width = (naturalW * scale) + 'px';
+  wrap.style.height = (naturalH * scale) + 'px';
+}
+window.addEventListener('resize', fitTabletShell);
+fitTabletShell();
+
+/* ============================================================
+   INITIAL STATE
+   ============================================================ */
+goTo('welcome');
+</script>
+
+</body>
+</html>
