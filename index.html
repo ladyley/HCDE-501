@@ -221,6 +221,87 @@
     fill:none;
     stroke-linecap:round;
   }
+  .road-lane-dash{
+    position:absolute;
+    stroke:rgba(235,240,245,0.4);
+    stroke-width:20;
+    stroke-dasharray:3 15;
+    fill:none;
+    stroke-linecap:round;
+  }
+
+  /* ============ STEP 7: shared Waymo-style map system ============
+     .waymo-trip-map is the single source of truth for the dark navy/charcoal
+     road environment — applied to the map containers on Trip Overview,
+     View Live Trip, and Arrival so all three share identical road, building,
+     and scenery styling. Any future aesthetic change belongs here, once. */
+  .waymo-trip-map{
+    background:
+      radial-gradient(ellipse 600px 460px at 82% 88%, rgba(32,46,64,0.30), transparent 62%),
+      radial-gradient(ellipse 480px 360px at 10% 14%, rgba(22,30,42,0.28), transparent 62%),
+      linear-gradient(160deg, #131920 0%, #0a0e13 65%, #070a0d 100%);
+  }
+  .waymo-trip-map.map-bg::before{
+    background-image:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.022) 0 1px, transparent 1px 160px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.022) 0 1px, transparent 1px 160px);
+    opacity:0.5;
+  }
+  .waymo-trip-map.map-bg::after{
+    background-image:
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.016) 0 1px, transparent 1px 48px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.016) 0 1px, transparent 1px 48px);
+    opacity:0.4;
+  }
+  .waymo-trip-map .road-surface{
+    stroke:#171d25;
+    stroke-opacity:0.95;
+  }
+  .waymo-trip-map .road-surface-edge{
+    stroke:rgba(255,255,255,0.16);
+    stroke-width:40;
+  }
+  /* fixed 1280x800 logical canvas holding the shared road-stage; the outer mount
+     (full-bleed on In-Trip/Arrival, a card inset on Trip Overview) can be any
+     size — a uniform scale+translate on .map-camera provides per-screen camera
+     framing (zoom/pan only, never perspective) without touching the canvas's
+     internal coordinates, so every existing path/percentage/pixel value used by
+     the road, scenery, and vehicles is reused completely unmodified. */
+  .map-camera{
+    position:absolute;
+    top:0; left:0;
+    width:1280px; height:800px;
+  }
+  .camera-overview{ transform:scale(0.9375) translate(0, -139px); transform-origin:top left; }
+  .camera-live{ transform:none; }
+  .camera-arrival{ transform:scale(1.4); transform-origin:top right; }
+
+  /* ============ STEP 5: road perspective (3-segment tapered geometry) ============
+     The road/route bezier is split into its 3 original T-point segments and each
+     segment's stroke-width narrows toward the vanishing point, so the roadway
+     reads as receding into the distance without any 3D transform on the layer —
+     this keeps vehicle artwork (positioned/drawn independently) completely
+     unaffected and undistorted, per the "don't transform vehicles" requirement. */
+  .road-stage{ position:absolute; inset:0; }
+  .road-shadow{
+    fill:none;
+    stroke:rgba(0,0,0,0.4);
+    stroke-linecap:round;
+    filter:blur(5px);
+    transform:translate(4px,7px);
+  }
+  .road-sidewalk{
+    fill:none;
+    stroke:#262e38;
+    stroke-linecap:round;
+    opacity:0.92;
+  }
+  .road-curb{
+    fill:none;
+    stroke:#4c5968;
+    stroke-linecap:round;
+    opacity:0.8;
+  }
 
   /* ============ SCENERY: buildings / trees / crosswalks ============ */
   .map-building{
@@ -228,6 +309,16 @@
     border-radius:8px;
     background:linear-gradient(150deg, rgba(118,168,255,0.55), rgba(52,104,205,0.6));
     box-shadow:0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.14);
+  }
+  /* rooftop highlight + side-face shading so buildings read as volumes rather than flat tiles */
+  .waymo-trip-map .map-building{
+    background:
+      linear-gradient(180deg, rgba(210,228,255,0.5) 0%, rgba(210,228,255,0) 14%),
+      linear-gradient(150deg, rgba(118,168,255,0.5), rgba(40,78,160,0.62) 70%, rgba(18,40,86,0.68) 100%);
+    box-shadow:3px 10px 16px rgba(0,0,0,0.45), inset -6px 0 10px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.22);
+  }
+  .waymo-trip-map .map-crosswalk{
+    filter:drop-shadow(0 3px 4px rgba(0,0,0,0.35));
   }
   .map-tree{
     position:absolute;
@@ -273,6 +364,20 @@
   .car-icon.slowing svg circle.pulse{
     animation:pulseRing 1.1s ease-out infinite;
   }
+  /* ego vehicle on the in-trip map is rendered larger/more detailed than the generic .car-icon used elsewhere */
+  #inTripCar{
+    width:58px;
+    height:58px;
+  }
+
+  /* ============ SURROUNDING TRAFFIC (stationary, Waymo-blue palette) ============ */
+  .traffic-vehicle{
+    position:absolute;
+    width:32px;
+    height:32px;
+    z-index:3;
+  }
+  .traffic-vehicle svg{width:100%;height:100%;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.4));}
   @keyframes pulseRing{
     0%{r:16;opacity:0.9;}
     100%{r:30;opacity:0;}
@@ -577,7 +682,6 @@
     inset:160px 40px 150px 40px;
     border-radius:26px;
     overflow:hidden;
-    background:var(--map-bg);
   }
 
   /* ====== SCREEN 4: IN-TRIP (home base) ====== */
@@ -1301,52 +1405,9 @@
         <!-- ============ SCREEN 3: RIDE START / F1 ============ -->
         <section class="view" id="screen-rideStart" data-screen="rideStart">
           <div class="map-bg"></div>
-          <div class="f1-route-map">
-            <svg width="100%" height="100%" preserveAspectRatio="none">
-              <path class="road-surface" d="M 120 420 Q 320 420 420 320 T 760 160" />
-              <path class="route-line-casing" d="M 120 420 Q 320 420 420 320 T 760 160" />
-              <path class="route-line" d="M 120 420 Q 320 420 420 320 T 760 160" />
-            </svg>
-            <!-- scenery: buildings/trees placed clear of the road curve (offset along its perpendicular), crosswalk crosses it -->
-            <div class="map-building" style="left:14.7%;top:65.5%;width:60px;height:58px;transform:rotate(-28deg);"></div>
-            <div class="map-building" style="left:21.4%;top:61.7%;width:56px;height:50px;transform:rotate(-22deg);"></div>
-            <div class="map-building" style="left:26.8%;top:53.4%;width:54px;height:60px;transform:rotate(-30deg);"></div>
-            <div class="map-building" style="left:33%;top:86%;width:68px;height:44px;transform:rotate(-16deg);"></div>
-            <div class="map-building" style="left:29%;top:41%;width:58px;height:56px;transform:rotate(-26deg);"></div>
-            <div class="map-building" style="left:43%;top:74.5%;width:62px;height:42px;transform:rotate(-14deg);"></div>
-            <div class="map-building" style="left:43%;top:25%;width:56px;height:58px;transform:rotate(-30deg);"></div>
-            <div class="map-building" style="left:57%;top:58%;width:60px;height:42px;transform:rotate(-16deg);"></div>
-            <div class="map-building" style="left:51%;top:19%;width:50px;height:52px;transform:rotate(-24deg);"></div>
-            <div class="map-tree" style="left:19.4%;top:93.9%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
-            <div class="map-tree" style="left:11.9%;top:76.6%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
-            <div class="map-tree" style="left:26.2%;top:90.1%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
-            <div class="map-tree" style="left:28.9%;top:65.5%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
-            <div class="map-tree" style="left:36.7%;top:75.7%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
-            <div class="map-tree" style="left:38.5%;top:47.2%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
-            <div class="map-tree" style="left:47.8%;top:56.4%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
-            <div class="map-tree" style="left:52.65%;top:30.7%;"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="7" fill="#2f9e63"/><rect x="10.3" y="15" width="3.4" height="7" rx="1" fill="#6b4a2f"/></svg></div>
-            <div class="map-crosswalk" style="left:40%;top:53%;width:48px;height:14px;transform:translate(-50%,-50%) rotate(-30deg);"></div>
-            <div class="map-pin" style="left:10%;top:80%;"></div>
-            <div class="map-pin end" style="left:62%;top:30%;"></div>
-            <div class="car-icon" style="left:10%;top:80%;">
-              <svg viewBox="0 0 48 48">
-                <circle class="pulse" cx="24" cy="24" r="16" fill="rgba(19,181,177,0.18)"/>
-                <g transform="translate(24,24) rotate(-30)">
-                  <rect x="-9.5" y="-9" width="3" height="6" rx="1.4" fill="#06201f"/>
-                  <rect x="6.5" y="-9" width="3" height="6" rx="1.4" fill="#06201f"/>
-                  <rect x="-9.5" y="4" width="3" height="6" rx="1.4" fill="#06201f"/>
-                  <rect x="6.5" y="4" width="3" height="6" rx="1.4" fill="#06201f"/>
-                  <rect x="-8" y="-13" width="16" height="26" rx="7" fill="#13b5b1"/>
-                  <rect x="-8" y="-13" width="16" height="10" rx="7" fill="#ffffff" opacity="0.1"/>
-                  <rect x="-5.3" y="-7" width="10.6" height="14" rx="4" fill="#0a8f8c"/>
-                  <rect x="-9.3" y="-6" width="2" height="3" rx="1" fill="#0a8f8c"/>
-                  <rect x="7.3" y="-6" width="2" height="3" rx="1" fill="#0a8f8c"/>
-                  <circle cx="-3.6" cy="-11.3" r="1" fill="#fff3d0"/>
-                  <circle cx="3.6" cy="-11.3" r="1" fill="#fff3d0"/>
-                  <circle cx="-3.6" cy="11.3" r="0.9" fill="#ff8a80"/>
-                  <circle cx="3.6" cy="11.3" r="0.9" fill="#ff8a80"/>
-                </g>
-              </svg>
+          <div class="f1-route-map waymo-trip-map">
+            <div class="map-camera camera-overview">
+              <div class="road-stage" id="rideStartRoadStage"></div>
             </div>
           </div>
           <div class="card status-card-top">
@@ -1373,9 +1434,30 @@
 
         <!-- ============ SCREEN 4: IN-TRIP (home base) ============ -->
         <section class="view" id="screen-inTrip" data-screen="inTrip">
-          <div class="trip-map-full map-bg" id="inTripMap">
+          <div class="trip-map-full map-bg waymo-trip-map" id="inTripMap">
+           <div class="map-camera camera-live">
+           <div class="road-stage" id="inTripRoadStage">
+            <!-- road drawn as 3 tapering segments (same bezier curve, split at its original T-points)
+                 so it reads as receding into the distance; route/vehicle coordinates are untouched -->
             <svg width="100%" height="100%" preserveAspectRatio="none">
-              <path class="road-surface" d="M 160 680 Q 400 600 500 480 T 820 240 T 1000 140" />
+              <path class="road-shadow" style="stroke-width:66" d="M 160 680 Q 400 600 500 480" />
+              <path class="road-shadow" style="stroke-width:46" d="M 500 480 Q 600 360 820 240" />
+              <path class="road-shadow" style="stroke-width:28" d="M 820 240 Q 1040 120 1000 140" />
+              <path class="road-sidewalk" style="stroke-width:64" d="M 160 680 Q 400 600 500 480" />
+              <path class="road-sidewalk" style="stroke-width:44" d="M 500 480 Q 600 360 820 240" />
+              <path class="road-sidewalk" style="stroke-width:26" d="M 820 240 Q 1040 120 1000 140" />
+              <path class="road-curb" style="stroke-width:47" d="M 160 680 Q 400 600 500 480" />
+              <path class="road-curb" style="stroke-width:33" d="M 500 480 Q 600 360 820 240" />
+              <path class="road-curb" style="stroke-width:21" d="M 820 240 Q 1040 120 1000 140" />
+              <path class="road-surface-edge" style="stroke-width:44" d="M 160 680 Q 400 600 500 480" />
+              <path class="road-surface-edge" style="stroke-width:30" d="M 500 480 Q 600 360 820 240" />
+              <path class="road-surface-edge" style="stroke-width:19" d="M 820 240 Q 1040 120 1000 140" />
+              <path class="road-surface" style="stroke-width:38" d="M 160 680 Q 400 600 500 480" />
+              <path class="road-surface" style="stroke-width:26" d="M 500 480 Q 600 360 820 240" />
+              <path class="road-surface" style="stroke-width:16" d="M 820 240 Q 1040 120 1000 140" />
+              <path class="road-lane-dash" d="M 160 680 Q 400 600 500 480" />
+              <path class="road-lane-dash" style="stroke-width:14;stroke-dasharray:2.4 12" d="M 500 480 Q 600 360 820 240" />
+              <path class="road-lane-dash" style="stroke-width:9;stroke-dasharray:1.6 8" d="M 820 240 Q 1040 120 1000 140" />
               <path class="route-line-casing" d="M 160 680 Q 400 600 500 480 T 820 240 T 1000 140" />
               <path class="route-line" id="inTripRoute" d="M 160 680 Q 400 600 500 480 T 820 240 T 1000 140" />
             </svg>
@@ -1403,26 +1485,219 @@
               <svg viewBox="0 0 20 40"><rect x="2" y="2" width="16" height="30" rx="7" fill="#1b2028" stroke="rgba(255,255,255,0.25)" stroke-width="1"/><circle cx="10" cy="11" r="4" fill="#3a2020"/><circle cx="10" cy="23" r="4" fill="#2fdc6a"><animate attributeName="opacity" values="1;0.45;1" dur="1.8s" repeatCount="indefinite"/></circle><rect x="8" y="32" width="4" height="7" fill="#1b2028"/></svg>
             </div>
             <div class="map-pin end" style="left:78%;top:18%;"></div>
-            <div class="car-icon" id="inTripCar" style="left:160px;top:680px;">
-              <svg viewBox="0 0 48 48">
-                <circle class="pulse" cx="24" cy="24" r="16" fill="rgba(19,181,177,0.35)"/>
-                <g transform="translate(24,24) rotate(-40)">
-                  <rect x="-9.5" y="-9" width="3" height="6" rx="1.4" fill="#06201f"/>
-                  <rect x="6.5" y="-9" width="3" height="6" rx="1.4" fill="#06201f"/>
-                  <rect x="-9.5" y="4" width="3" height="6" rx="1.4" fill="#06201f"/>
-                  <rect x="6.5" y="4" width="3" height="6" rx="1.4" fill="#06201f"/>
-                  <rect x="-8" y="-13" width="16" height="26" rx="7" fill="#13b5b1"/>
-                  <rect x="-8" y="-13" width="16" height="10" rx="7" fill="#ffffff" opacity="0.1"/>
-                  <rect x="-5.3" y="-7" width="10.6" height="14" rx="4" fill="#0a8f8c"/>
-                  <rect x="-9.3" y="-6" width="2" height="3" rx="1" fill="#0a8f8c"/>
-                  <rect x="7.3" y="-6" width="2" height="3" rx="1" fill="#0a8f8c"/>
-                  <circle cx="-3.6" cy="-11.3" r="1" fill="#fff3d0"/>
-                  <circle cx="3.6" cy="-11.3" r="1" fill="#fff3d0"/>
-                  <circle cx="-3.6" cy="11.3" r="0.9" fill="#ff8a80"/>
-                  <circle cx="3.6" cy="11.3" r="0.9" fill="#ff8a80"/>
+            <!-- surrounding traffic: simplified blue vehicles along the route, stationary for now -->
+            <div class="traffic-vehicle" style="left:22.56%;top:80.49%;">
+              <svg viewBox="0 0 32 32">
+                <g transform="rotate(65.6 16 16)">
+                  <ellipse cx="16.41" cy="17.5" rx="7.48" ry="10.88" fill="#000000" opacity="0.25"/>
+                  <rect x="9.06" y="9.61" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="20.83" y="9.61" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="9.06" y="18.65" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="20.83" y="18.65" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <path d="M 10.42 10.56 Q 10.15 6.34 13.96 5.94 L 18.04 5.94 Q 21.85 6.34 21.58 10.56 L 21.98 20.76 Q 22.12 25.25 18.86 25.66 L 13.14 25.66 Q 9.88 25.25 10.02 20.76 Z" fill="#1c2c4d" stroke="rgba(0,10,25,0.35)" stroke-width="0.3"/>
+                  <path d="M 11.51 9.88 Q 11.38 7.16 13.96 6.89 L 18.04 6.89 Q 20.62 7.16 20.49 9.88 L 20.22 13.62 L 11.78 13.62 Z" fill="#3f66ad" opacity="0.55"/>
+                  <path d="M 12.19 10.15 Q 12.06 8.11 14.23 7.84 L 17.77 7.84 Q 19.94 8.11 19.81 10.15 L 19.6 15.18 L 12.4 15.18 Z" fill="#0c1420"/>
+                  <path d="M 12.4 15.18 L 19.6 15.18 L 19.74 16.88 L 12.26 16.88 Z" fill="#3f66ad" opacity="0.4"/>
+                  <path d="M 11.31 17.02 L 20.69 17.02 L 20.28 21.58 Q 19.94 23.21 18.04 23.34 L 13.96 23.34 Q 12.06 23.21 11.72 21.58 Z" fill="#0c1420" opacity="0.9"/>
+                  <path d="M 11.72 21.58 Q 12.06 23.21 13.96 23.34 L 18.04 23.34 Q 19.94 23.21 20.28 21.58 L 20.49 23.96 Q 20.69 25.25 18.04 25.45 L 13.96 25.45 Q 11.31 25.25 11.51 23.96 Z" fill="#1c2c4d" opacity="0.85"/>
+                  <rect x="14.23" y="6.07" width="1.36" height="0.61" rx="0.3" fill="#dff0ff"/>
+                  <rect x="16.41" y="6.07" width="1.36" height="0.61" rx="0.3" fill="#dff0ff"/>
+                  <rect x="13.69" y="25.25" width="1.22" height="0.54" rx="0.3" fill="#8fb4ff"/>
+                  <rect x="17.09" y="25.25" width="1.22" height="0.54" rx="0.3" fill="#8fb4ff"/>
                 </g>
               </svg>
             </div>
+            <div class="traffic-vehicle" style="left:32.34%;top:67.78%;">
+              <svg viewBox="0 0 32 32">
+                <g transform="rotate(-126.5 16 16)">
+                  <ellipse cx="16.41" cy="17.5" rx="7.48" ry="10.88" fill="#000000" opacity="0.25"/>
+                  <rect x="9.06" y="9.61" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="20.83" y="9.61" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="9.06" y="18.65" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="20.83" y="18.65" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <path d="M 10.42 10.56 Q 10.15 6.34 13.96 5.94 L 18.04 5.94 Q 21.85 6.34 21.58 10.56 L 21.98 20.76 Q 22.12 25.25 18.86 25.66 L 13.14 25.66 Q 9.88 25.25 10.02 20.76 Z" fill="#24407a" stroke="rgba(0,10,25,0.35)" stroke-width="0.3"/>
+                  <path d="M 11.51 9.88 Q 11.38 7.16 13.96 6.89 L 18.04 6.89 Q 20.62 7.16 20.49 9.88 L 20.22 13.62 L 11.78 13.62 Z" fill="#5886d6" opacity="0.55"/>
+                  <path d="M 12.19 10.15 Q 12.06 8.11 14.23 7.84 L 17.77 7.84 Q 19.94 8.11 19.81 10.15 L 19.6 15.18 L 12.4 15.18 Z" fill="#0a1724"/>
+                  <path d="M 12.4 15.18 L 19.6 15.18 L 19.74 16.88 L 12.26 16.88 Z" fill="#5886d6" opacity="0.4"/>
+                  <path d="M 11.31 17.02 L 20.69 17.02 L 20.28 21.58 Q 19.94 23.21 18.04 23.34 L 13.96 23.34 Q 12.06 23.21 11.72 21.58 Z" fill="#0a1724" opacity="0.9"/>
+                  <path d="M 11.72 21.58 Q 12.06 23.21 13.96 23.34 L 18.04 23.34 Q 19.94 23.21 20.28 21.58 L 20.49 23.96 Q 20.69 25.25 18.04 25.45 L 13.96 25.45 Q 11.31 25.25 11.51 23.96 Z" fill="#24407a" opacity="0.85"/>
+                  <rect x="14.23" y="6.07" width="1.36" height="0.61" rx="0.3" fill="#dff0ff"/>
+                  <rect x="16.41" y="6.07" width="1.36" height="0.61" rx="0.3" fill="#dff0ff"/>
+                  <rect x="13.69" y="25.25" width="1.22" height="0.54" rx="0.3" fill="#8fb4ff"/>
+                  <rect x="17.09" y="25.25" width="1.22" height="0.54" rx="0.3" fill="#8fb4ff"/>
+                </g>
+              </svg>
+            </div>
+            <div class="traffic-vehicle" style="left:41.12%;top:58.70%;">
+              <svg viewBox="0 0 32 32">
+                <g transform="rotate(42.4 16 16)">
+                  <ellipse cx="16.41" cy="17.5" rx="7.48" ry="10.88" fill="#000000" opacity="0.25"/>
+                  <rect x="9.06" y="9.61" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="20.83" y="9.61" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="9.06" y="18.65" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="20.83" y="18.65" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <path d="M 10.42 10.56 Q 10.15 6.34 13.96 5.94 L 18.04 5.94 Q 21.85 6.34 21.58 10.56 L 21.98 20.76 Q 22.12 25.25 18.86 25.66 L 13.14 25.66 Q 9.88 25.25 10.02 20.76 Z" fill="#16233f" stroke="rgba(0,10,25,0.35)" stroke-width="0.3"/>
+                  <path d="M 11.51 9.88 Q 11.38 7.16 13.96 6.89 L 18.04 6.89 Q 20.62 7.16 20.49 9.88 L 20.22 13.62 L 11.78 13.62 Z" fill="#345185" opacity="0.55"/>
+                  <path d="M 12.19 10.15 Q 12.06 8.11 14.23 7.84 L 17.77 7.84 Q 19.94 8.11 19.81 10.15 L 19.6 15.18 L 12.4 15.18 Z" fill="#070e18"/>
+                  <path d="M 12.4 15.18 L 19.6 15.18 L 19.74 16.88 L 12.26 16.88 Z" fill="#345185" opacity="0.4"/>
+                  <path d="M 11.31 17.02 L 20.69 17.02 L 20.28 21.58 Q 19.94 23.21 18.04 23.34 L 13.96 23.34 Q 12.06 23.21 11.72 21.58 Z" fill="#070e18" opacity="0.9"/>
+                  <path d="M 11.72 21.58 Q 12.06 23.21 13.96 23.34 L 18.04 23.34 Q 19.94 23.21 20.28 21.58 L 20.49 23.96 Q 20.69 25.25 18.04 25.45 L 13.96 25.45 Q 11.31 25.25 11.51 23.96 Z" fill="#16233f" opacity="0.85"/>
+                  <rect x="14.23" y="6.07" width="1.36" height="0.61" rx="0.3" fill="#dff0ff"/>
+                  <rect x="16.41" y="6.07" width="1.36" height="0.61" rx="0.3" fill="#dff0ff"/>
+                  <rect x="13.69" y="25.25" width="1.22" height="0.54" rx="0.3" fill="#8fb4ff"/>
+                  <rect x="17.09" y="25.25" width="1.22" height="0.54" rx="0.3" fill="#8fb4ff"/>
+                </g>
+              </svg>
+            </div>
+            <div class="traffic-vehicle" style="left:47.37%;top:45.22%;">
+              <svg viewBox="0 0 32 32">
+                <g transform="rotate(-127.9 16 16)">
+                  <ellipse cx="16.41" cy="17.5" rx="7.48" ry="10.88" fill="#000000" opacity="0.25"/>
+                  <rect x="9.06" y="9.61" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="20.83" y="9.61" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="9.06" y="18.65" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="20.83" y="18.65" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <path d="M 10.42 10.56 Q 10.15 6.34 13.96 5.94 L 18.04 5.94 Q 21.85 6.34 21.58 10.56 L 21.98 20.76 Q 22.12 25.25 18.86 25.66 L 13.14 25.66 Q 9.88 25.25 10.02 20.76 Z" fill="#1c2c4d" stroke="rgba(0,10,25,0.35)" stroke-width="0.3"/>
+                  <path d="M 11.51 9.88 Q 11.38 7.16 13.96 6.89 L 18.04 6.89 Q 20.62 7.16 20.49 9.88 L 20.22 13.62 L 11.78 13.62 Z" fill="#3f66ad" opacity="0.55"/>
+                  <path d="M 12.19 10.15 Q 12.06 8.11 14.23 7.84 L 17.77 7.84 Q 19.94 8.11 19.81 10.15 L 19.6 15.18 L 12.4 15.18 Z" fill="#0c1420"/>
+                  <path d="M 12.4 15.18 L 19.6 15.18 L 19.74 16.88 L 12.26 16.88 Z" fill="#3f66ad" opacity="0.4"/>
+                  <path d="M 11.31 17.02 L 20.69 17.02 L 20.28 21.58 Q 19.94 23.21 18.04 23.34 L 13.96 23.34 Q 12.06 23.21 11.72 21.58 Z" fill="#0c1420" opacity="0.9"/>
+                  <path d="M 11.72 21.58 Q 12.06 23.21 13.96 23.34 L 18.04 23.34 Q 19.94 23.21 20.28 21.58 L 20.49 23.96 Q 20.69 25.25 18.04 25.45 L 13.96 25.45 Q 11.31 25.25 11.51 23.96 Z" fill="#1c2c4d" opacity="0.85"/>
+                  <rect x="14.23" y="6.07" width="1.36" height="0.61" rx="0.3" fill="#dff0ff"/>
+                  <rect x="16.41" y="6.07" width="1.36" height="0.61" rx="0.3" fill="#dff0ff"/>
+                  <rect x="13.69" y="25.25" width="1.22" height="0.54" rx="0.3" fill="#8fb4ff"/>
+                  <rect x="17.09" y="25.25" width="1.22" height="0.54" rx="0.3" fill="#8fb4ff"/>
+                </g>
+              </svg>
+            </div>
+            <div class="traffic-vehicle" style="left:58.09%;top:37.39%;">
+              <svg viewBox="0 0 32 32">
+                <g transform="rotate(58.5 16 16)">
+                  <ellipse cx="16.41" cy="17.5" rx="7.48" ry="10.88" fill="#000000" opacity="0.25"/>
+                  <rect x="9.06" y="9.61" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="20.83" y="9.61" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="9.06" y="18.65" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="20.83" y="18.65" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <path d="M 10.42 10.56 Q 10.15 6.34 13.96 5.94 L 18.04 5.94 Q 21.85 6.34 21.58 10.56 L 21.98 20.76 Q 22.12 25.25 18.86 25.66 L 13.14 25.66 Q 9.88 25.25 10.02 20.76 Z" fill="#24407a" stroke="rgba(0,10,25,0.35)" stroke-width="0.3"/>
+                  <path d="M 11.51 9.88 Q 11.38 7.16 13.96 6.89 L 18.04 6.89 Q 20.62 7.16 20.49 9.88 L 20.22 13.62 L 11.78 13.62 Z" fill="#5886d6" opacity="0.55"/>
+                  <path d="M 12.19 10.15 Q 12.06 8.11 14.23 7.84 L 17.77 7.84 Q 19.94 8.11 19.81 10.15 L 19.6 15.18 L 12.4 15.18 Z" fill="#0a1724"/>
+                  <path d="M 12.4 15.18 L 19.6 15.18 L 19.74 16.88 L 12.26 16.88 Z" fill="#5886d6" opacity="0.4"/>
+                  <path d="M 11.31 17.02 L 20.69 17.02 L 20.28 21.58 Q 19.94 23.21 18.04 23.34 L 13.96 23.34 Q 12.06 23.21 11.72 21.58 Z" fill="#0a1724" opacity="0.9"/>
+                  <path d="M 11.72 21.58 Q 12.06 23.21 13.96 23.34 L 18.04 23.34 Q 19.94 23.21 20.28 21.58 L 20.49 23.96 Q 20.69 25.25 18.04 25.45 L 13.96 25.45 Q 11.31 25.25 11.51 23.96 Z" fill="#24407a" opacity="0.85"/>
+                  <rect x="14.23" y="6.07" width="1.36" height="0.61" rx="0.3" fill="#dff0ff"/>
+                  <rect x="16.41" y="6.07" width="1.36" height="0.61" rx="0.3" fill="#dff0ff"/>
+                  <rect x="13.69" y="25.25" width="1.22" height="0.54" rx="0.3" fill="#8fb4ff"/>
+                  <rect x="17.09" y="25.25" width="1.22" height="0.54" rx="0.3" fill="#8fb4ff"/>
+                </g>
+              </svg>
+            </div>
+            <div class="traffic-vehicle" style="left:68.27%;top:24.47%;">
+              <svg viewBox="0 0 32 32">
+                <g transform="rotate(-118.7 16 16)">
+                  <ellipse cx="16.41" cy="17.5" rx="7.48" ry="10.88" fill="#000000" opacity="0.25"/>
+                  <rect x="9.06" y="9.61" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="20.83" y="9.61" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="9.06" y="18.65" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="20.83" y="18.65" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <path d="M 10.42 10.56 Q 10.15 6.34 13.96 5.94 L 18.04 5.94 Q 21.85 6.34 21.58 10.56 L 21.98 20.76 Q 22.12 25.25 18.86 25.66 L 13.14 25.66 Q 9.88 25.25 10.02 20.76 Z" fill="#16233f" stroke="rgba(0,10,25,0.35)" stroke-width="0.3"/>
+                  <path d="M 11.51 9.88 Q 11.38 7.16 13.96 6.89 L 18.04 6.89 Q 20.62 7.16 20.49 9.88 L 20.22 13.62 L 11.78 13.62 Z" fill="#345185" opacity="0.55"/>
+                  <path d="M 12.19 10.15 Q 12.06 8.11 14.23 7.84 L 17.77 7.84 Q 19.94 8.11 19.81 10.15 L 19.6 15.18 L 12.4 15.18 Z" fill="#070e18"/>
+                  <path d="M 12.4 15.18 L 19.6 15.18 L 19.74 16.88 L 12.26 16.88 Z" fill="#345185" opacity="0.4"/>
+                  <path d="M 11.31 17.02 L 20.69 17.02 L 20.28 21.58 Q 19.94 23.21 18.04 23.34 L 13.96 23.34 Q 12.06 23.21 11.72 21.58 Z" fill="#070e18" opacity="0.9"/>
+                  <path d="M 11.72 21.58 Q 12.06 23.21 13.96 23.34 L 18.04 23.34 Q 19.94 23.21 20.28 21.58 L 20.49 23.96 Q 20.69 25.25 18.04 25.45 L 13.96 25.45 Q 11.31 25.25 11.51 23.96 Z" fill="#16233f" opacity="0.85"/>
+                  <rect x="14.23" y="6.07" width="1.36" height="0.61" rx="0.3" fill="#dff0ff"/>
+                  <rect x="16.41" y="6.07" width="1.36" height="0.61" rx="0.3" fill="#dff0ff"/>
+                  <rect x="13.69" y="25.25" width="1.22" height="0.54" rx="0.3" fill="#8fb4ff"/>
+                  <rect x="17.09" y="25.25" width="1.22" height="0.54" rx="0.3" fill="#8fb4ff"/>
+                </g>
+              </svg>
+            </div>
+            <div class="traffic-vehicle" style="left:72.58%;top:24.40%;">
+              <svg viewBox="0 0 32 32">
+                <g transform="rotate(61.2 16 16)">
+                  <ellipse cx="16.41" cy="17.5" rx="7.48" ry="10.88" fill="#000000" opacity="0.25"/>
+                  <rect x="9.06" y="9.61" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="20.83" y="9.61" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="9.06" y="18.65" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <rect x="20.83" y="18.65" width="2.11" height="4.49" rx="1" fill="#070a10"/>
+                  <path d="M 10.42 10.56 Q 10.15 6.34 13.96 5.94 L 18.04 5.94 Q 21.85 6.34 21.58 10.56 L 21.98 20.76 Q 22.12 25.25 18.86 25.66 L 13.14 25.66 Q 9.88 25.25 10.02 20.76 Z" fill="#1c2c4d" stroke="rgba(0,10,25,0.35)" stroke-width="0.3"/>
+                  <path d="M 11.51 9.88 Q 11.38 7.16 13.96 6.89 L 18.04 6.89 Q 20.62 7.16 20.49 9.88 L 20.22 13.62 L 11.78 13.62 Z" fill="#3f66ad" opacity="0.55"/>
+                  <path d="M 12.19 10.15 Q 12.06 8.11 14.23 7.84 L 17.77 7.84 Q 19.94 8.11 19.81 10.15 L 19.6 15.18 L 12.4 15.18 Z" fill="#0c1420"/>
+                  <path d="M 12.4 15.18 L 19.6 15.18 L 19.74 16.88 L 12.26 16.88 Z" fill="#3f66ad" opacity="0.4"/>
+                  <path d="M 11.31 17.02 L 20.69 17.02 L 20.28 21.58 Q 19.94 23.21 18.04 23.34 L 13.96 23.34 Q 12.06 23.21 11.72 21.58 Z" fill="#0c1420" opacity="0.9"/>
+                  <path d="M 11.72 21.58 Q 12.06 23.21 13.96 23.34 L 18.04 23.34 Q 19.94 23.21 20.28 21.58 L 20.49 23.96 Q 20.69 25.25 18.04 25.45 L 13.96 25.45 Q 11.31 25.25 11.51 23.96 Z" fill="#1c2c4d" opacity="0.85"/>
+                  <rect x="14.23" y="6.07" width="1.36" height="0.61" rx="0.3" fill="#dff0ff"/>
+                  <rect x="16.41" y="6.07" width="1.36" height="0.61" rx="0.3" fill="#dff0ff"/>
+                  <rect x="13.69" y="25.25" width="1.22" height="0.54" rx="0.3" fill="#8fb4ff"/>
+                  <rect x="17.09" y="25.25" width="1.22" height="0.54" rx="0.3" fill="#8fb4ff"/>
+                </g>
+              </svg>
+            </div>
+            <div class="car-icon" id="inTripCar" style="left:160px;top:680px;">
+              <svg viewBox="0 0 48 48">
+                <defs>
+                  <linearGradient id="egoBodyGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#ffffff"/>
+                    <stop offset="55%" stop-color="#f1f3f5"/>
+                    <stop offset="100%" stop-color="#d7dce1"/>
+                  </linearGradient>
+                  <linearGradient id="egoGlassGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#3d4a59"/>
+                    <stop offset="100%" stop-color="#1f2731"/>
+                  </linearGradient>
+                  <radialGradient id="egoHoodGrad" cx="50%" cy="15%" r="75%">
+                    <stop offset="0%" stop-color="#ffffff"/>
+                    <stop offset="100%" stop-color="#e3e7ea"/>
+                  </radialGradient>
+                  <linearGradient id="egoSensorGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#4a5158"/>
+                    <stop offset="100%" stop-color="#15181b"/>
+                  </linearGradient>
+                </defs>
+                <circle class="pulse" cx="24" cy="24" r="16" fill="rgba(19,181,177,0.35)"/>
+                <g transform="translate(24,24) rotate(-40)">
+                  <!-- ground shadow for dimensional depth -->
+                  <ellipse cx="0.6" cy="2.2" rx="11" ry="16" fill="#000000" opacity="0.3"/>
+                  <!-- wheels, visible at the four corners in this elevated 3/4 view -->
+                  <rect x="-10.2" y="-9.4" width="3.1" height="6.6" rx="1.4" fill="#101317"/>
+                  <rect x="7.1" y="-9.4" width="3.1" height="6.6" rx="1.4" fill="#101317"/>
+                  <rect x="-10.2" y="3.9" width="3.1" height="6.6" rx="1.4" fill="#101317"/>
+                  <rect x="7.1" y="3.9" width="3.1" height="6.6" rx="1.4" fill="#101317"/>
+                  <rect x="-10.2" y="-9.4" width="3.1" height="2" rx="1" fill="#2c3238" opacity="0.6"/>
+                  <rect x="7.1" y="-9.4" width="3.1" height="2" rx="1" fill="#2c3238" opacity="0.6"/>
+                  <!-- body shell, three-quarter silhouette (wider cabin, tapered nose/tail) -->
+                  <path d="M -8.2 -8 Q -8.6 -14.2 -3 -14.8 L 3 -14.8 Q 8.6 -14.2 8.2 -8 L 8.8 7 Q 9 13.6 4.2 14.2 L -4.2 14.2 Q -9 13.6 -8.8 7 Z" fill="url(#egoBodyGrad)" stroke="rgba(10,20,30,0.2)" stroke-width="0.4"/>
+                  <!-- door seams for added dimensional realism -->
+                  <line x1="-8.5" y1="-1" x2="-8.9" y2="2.4" stroke="rgba(10,20,30,0.18)" stroke-width="0.35"/>
+                  <line x1="8.5" y1="-1" x2="8.9" y2="2.4" stroke="rgba(10,20,30,0.18)" stroke-width="0.35"/>
+                  <!-- hood facet catching light -->
+                  <path d="M -6.6 -9 Q -6.8 -13 -3 -13.4 L 3 -13.4 Q 6.8 -13 6.6 -9 L 6.2 -3.5 L -6.2 -3.5 Z" fill="url(#egoHoodGrad)"/>
+                  <line x1="0" y1="-13.2" x2="0" y2="-4" stroke="rgba(255,255,255,0.4)" stroke-width="0.35"/>
+                  <!-- windshield -->
+                  <path d="M -5.6 -8.6 Q -5.8 -11.6 -2.6 -12 L 2.6 -12 Q 5.8 -11.6 5.6 -8.6 L 5.3 -1.2 L -5.3 -1.2 Z" fill="url(#egoGlassGrad)"/>
+                  <line x1="-4.6" y1="-10.4" x2="2" y2="-3.4" stroke="rgba(255,255,255,0.22)" stroke-width="0.6"/>
+                  <!-- roof plane with lidar sensor pod -->
+                  <path d="M -5.3 -1.2 L 5.3 -1.2 L 5.5 1.3 L -5.5 1.3 Z" fill="#e7eaed"/>
+                  <rect x="-3.6" y="-1.6" width="7.2" height="2.6" rx="1.3" fill="url(#egoSensorGrad)" stroke="rgba(255,255,255,0.25)" stroke-width="0.3"/>
+                  <rect x="-2.6" y="-1.2" width="5.2" height="0.8" rx="0.4" fill="#5b6268" opacity="0.8"/>
+                  <!-- rear side window band -->
+                  <path d="M -6.9 1.5 L 6.9 1.5 L 6.3 8.2 Q 5.8 10.6 3 10.8 L -3 10.8 Q -5.8 10.6 -6.3 8.2 Z" fill="url(#egoGlassGrad)" opacity="0.92"/>
+                  <!-- trunk facet -->
+                  <path d="M -6.3 8.2 Q -5.8 10.6 -3 10.8 L 3 10.8 Q 5.8 10.6 6.3 8.2 L 6.6 11.7 Q 6.9 13.6 3 13.9 L -3 13.9 Q -6.9 13.6 -6.6 11.7 Z" fill="#eef0f2" opacity="0.9"/>
+                  <!-- side mirrors -->
+                  <rect x="-9.8" y="-6.8" width="1.9" height="1.7" rx="0.6" fill="#c3c9ce"/>
+                  <rect x="7.9" y="-6.8" width="1.9" height="1.7" rx="0.6" fill="#c3c9ce"/>
+                  <!-- headlights, LED-bar style -->
+                  <rect x="-2.6" y="-14.6" width="2" height="0.9" rx="0.4" fill="#fff8e0"/>
+                  <rect x="0.6" y="-14.6" width="2" height="0.9" rx="0.4" fill="#fff8e0"/>
+                  <!-- taillights -->
+                  <rect x="-3.4" y="13.6" width="1.8" height="0.8" rx="0.4" fill="#ff5f5a"/>
+                  <rect x="1.6" y="13.6" width="1.8" height="0.8" rx="0.4" fill="#ff5f5a"/>
+                </g>
+              </svg>
+            </div>
+           </div>
+           </div>
           </div>
 
           <div class="persistent-topcard">
@@ -1637,7 +1912,11 @@
 
         <!-- ============ SCREEN 10: ARRIVAL ============ -->
         <section class="view" id="screen-arrival" data-screen="arrival">
-          <div class="map-bg"></div>
+          <div class="trip-map-full map-bg waymo-trip-map" id="arrivalMap">
+            <div class="map-camera camera-arrival">
+              <div class="road-stage" id="arrivalRoadStage"></div>
+            </div>
+          </div>
           <div class="center-col">
             <div class="card arrival-card">
               <div class="arrival-check">
@@ -1882,6 +2161,43 @@ function animateInTripCar(){
   }, 2600);
 }
 animateInTripCar();
+
+/* ============================================================
+   STEP 7: shared map system — Trip Overview and Arrival reuse the
+   exact same road/building/traffic markup authored once above (the
+   canonical #inTripRoadStage), so all three trip screens render an
+   identical environment from a single source of truth. Each target
+   gets its own static vehicle position; the live #inTripCar and its
+   animation above are completely untouched by this.
+   ============================================================ */
+function cloneSharedRoadStage(targetId, carLeft, carTop){
+  var source = document.getElementById('inTripRoadStage');
+  var target = document.getElementById(targetId);
+  if (!source || !target) return;
+  var html = source.innerHTML;
+  // give the ego-vehicle gradient defs unique ids per clone so duplicate SVG <defs> never collide
+  ['egoBodyGrad','egoGlassGrad','egoHoodGrad','egoSensorGrad'].forEach(function(gradId){
+    var unique = gradId + '-' + targetId;
+    html = html.split('id="' + gradId + '"').join('id="' + unique + '"');
+    html = html.split('url(#' + gradId + ')').join('url(#' + unique + ')');
+  });
+  target.innerHTML = html;
+  var route = target.querySelector('#inTripRoute');
+  if (route) route.removeAttribute('id');
+  var destBuilding = target.querySelector('#inTripDestBuilding');
+  if (destBuilding) destBuilding.removeAttribute('id');
+  var car = target.querySelector('#inTripCar');
+  if (car){
+    car.removeAttribute('id');
+    car.classList.remove('slowing');
+    car.style.left = carLeft + 'px';
+    car.style.top = carTop + 'px';
+  }
+}
+// Trip Overview: vehicle shown at the start of the simulated route (same coordinates animateInTripCar begins from)
+cloneSharedRoadStage('rideStartRoadStage', inTripPathPoints[0].left, inTripPathPoints[0].top);
+// Arrival: vehicle shown stopped at the final waypoint of the same route, near the destination pin
+cloneSharedRoadStage('arrivalRoadStage', inTripPathPoints[inTripPathPoints.length - 1].left, inTripPathPoints[inTripPathPoints.length - 1].top);
 
 /* ============================================================
    SCREEN 5: F2 — Environmental awareness banner (pedestrian)
