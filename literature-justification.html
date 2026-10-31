@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Literature Justification — Autonomous Shuttle HMI Core Functions</title>
+<style>
+  @page { size: Letter; margin: 0.85in 0.9in; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    color: #1a1f27;
+    line-height: 1.5;
+    font-size: 11.5pt;
+  }
+  h1.doctitle {
+    font-size: 21pt;
+    margin-bottom: 2px;
+    color: #0b3d5c;
+  }
+  .subtitle {
+    font-size: 12pt;
+    color: #5a6472;
+    margin-bottom: 4px;
+  }
+  .meta {
+    font-size: 9.5pt;
+    color: #8a93a0;
+    margin-bottom: 22px;
+    border-bottom: 2px solid #0b3d5c;
+    padding-bottom: 14px;
+  }
+  h2.func {
+    font-size: 14.5pt;
+    color: #ffffff;
+    background: #0b3d5c;
+    padding: 8px 14px;
+    border-radius: 6px;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    page-break-after: avoid;
+  }
+  h2.func .owner {
+    float: right;
+    font-weight: 400;
+    font-size: 10pt;
+    color: #cfe3f0;
+  }
+  .block {
+    margin-bottom: 10px;
+  }
+  .label {
+    font-weight: 700;
+    color: #0b3d5c;
+    font-size: 10.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 2px;
+  }
+  .rnum {
+    font-size: 9pt;
+    font-weight: 700;
+    color: #0b3d5c;
+    background: #e8eef3;
+    padding: 1px 7px;
+    border-radius: 10px;
+    margin-left: 7px;
+    letter-spacing: 0.2px;
+    text-transform: none;
+  }
+  .interaction-flow {
+    font-style: italic;
+    color: #46505c;
+    font-size: 10.5pt;
+  }
+  table.lit {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 6px;
+    margin-bottom: 4px;
+    font-size: 10pt;
+    page-break-inside: avoid;
+  }
+  table.lit th {
+    background: #e8eef3;
+    text-align: left;
+    padding: 6px 8px;
+    color: #0b3d5c;
+    font-size: 9.5pt;
+    border-bottom: 1px solid #c3d2dd;
+  }
+  table.lit td {
+    padding: 7px 8px;
+    border-bottom: 1px solid #e3e7eb;
+    vertical-align: top;
+  }
+  table.lit tr:last-child td { border-bottom: none; }
+  .citation { font-weight: 600; color: #15202b; }
+  .doi { font-size: 8.8pt; color: #7a8694; }
+  .doi a { color: #3b6ea5; text-decoration: none; }
+  .takeaway {
+    background: #f4f8fb;
+    border-left: 3px solid #2f80a8;
+    padding: 6px 10px;
+    margin-top: 6px;
+    font-size: 10.2pt;
+  }
+  .takeaway .label { margin-bottom: 1px; }
+  .requirement {
+    background: #fbf6e9;
+    border-left: 3px solid #c99a2e;
+    padding: 6px 10px;
+    margin-top: 8px;
+    font-size: 10.2pt;
+  }
+  .func-section { page-break-inside: avoid; }
+  hr.sep { border: none; border-top: 1px solid #d8dde3; margin: 26px 0 18px; }
+  .refs {
+    margin-top: 10px;
+    font-size: 9.8pt;
+    color: #333;
+  }
+  .refs li { margin-bottom: 7px; }
+  .refs .doi { display: block; }
+  .footer-note {
+    font-size: 9pt;
+    color: #8a93a0;
+    margin-top: 6px;
+  }
+</style>
+</head>
+<body>
+
+<h1 class="doctitle">Literature Justification</h1>
+<div class="subtitle">Core HMI Functions for a Waymo-Style Autonomous Shuttle — Research-Informed Prototype Rationale (Revised)</div>
+<div class="meta">HCDE 501 · Human-AI Teaming Interface Design for Complex Systems · Option B: Shared / Ride-Hail ADS Fleet Vehicle · Stage 1 Deliverable Support Document — Revised following faculty review of the Stage 1 report and prototype</div>
+
+<p>This document provides the research justification for six core Human-AI collaboration functions selected for the autonomous shuttle in-car display prototype. For each function, we state its purpose, the primary interaction challenge it must resolve, the supporting literature, and the verifiable "shall" requirement(s) (R1&ndash;R18) that this literature motivates in the current prototype. This revision incorporates the faculty feedback on the Stage 1 submission and four additional sources identified during revision: Bolzmacher et al. (2026), Xu et al. (2025), Schu&szlig;, Wintersberger &amp; Riener (2021), and Jian, Bisantz &amp; Drury (2000).</p>
+
+<hr class="sep">
+
+<!-- REVISION SUMMARY -->
+<div class="func-section">
+<h2 class="func">Revision Summary &mdash; Faculty Feedback Addressed</h2>
+<div class="block">
+  <div>The table below maps specific faculty review feedback on the Stage 1 report and prototype to the change made in the current prototype revision.</div>
+</div>
+<table class="lit">
+  <tr><th style="width:32%">Faculty Feedback</th><th style="width:43%">Prototype Resolution</th><th style="width:25%">Requirement(s)</th></tr>
+  <tr>
+    <td>Passenger-facing screens exposed debug/demo controls and inconsistent labeling for the help function.</td>
+    <td>All debug/demo affordances were removed from every passenger-facing screen. A single consistent "Help" label is used at every entry point, and all scenario-control affordances were consolidated into a separate Presenter Tool panel outside the passenger UI.</td>
+    <td>R16</td>
+  </tr>
+  <tr>
+    <td>The emergency option sat last in the Help menu and was not visually distinct from non-urgent options.</td>
+    <td>Emergency Assistance is now the first option in the single shared Help menu, with a red accent and a distinct icon, separating it from Contact Rider Support and Report a Safety Concern &mdash; consistent with Schu&szlig;, Wintersberger &amp; Riener's (2021) argument that security-seeking users should not have to scan past routine options to reach help.</td>
+    <td>R18</td>
+  </tr>
+  <tr>
+    <td>Level 2 critical warnings specified only a visual cue; no audio/voice script was defined ("TODO: attach the final audio script").</td>
+    <td>A two-cue audio script is now specified and implemented: an ascending tone pair + voice line ("Safety event detected. Please remain seated and hold on.") at warning onset, and a distinct, lower descending tone + voice line ("Situation resolved. Preparing to continue.") at the confirmed-resolved recovery step, not a user action.</td>
+    <td>R10&ndash;R12</td>
+  </tr>
+  <tr>
+    <td>Recovery copy risked implying outcomes ("You're safe," an estimated resume time) before they were verified by the system.</td>
+    <td>Recovery now advances only through confirmed states &mdash; Vehicle stopped &rarr; Assessing situation&hellip; &rarr; Situation resolved &rarr; Preparing to continue &rarr; Trip resuming &mdash; with a separate "Vehicle remaining stopped / please remain seated" state shown instead when the event is not yet resolved. No reassurance language appears ahead of the state that earns it.</td>
+    <td>R13&ndash;R15</td>
+  </tr>
+  <tr>
+    <td>Passenger-facing "Continue" / "Next update" controls on the recovery screen implied the rider, not the system, advanced the safety state.</td>
+    <td>No control on the Critical Warning or Recovery screens lets the passenger advance the safety state. All state changes are system/presenter-driven; the passenger only ever reads the current confirmed state.</td>
+    <td>R12, R14</td>
+  </tr>
+  <tr>
+    <td>The stop-request flow needed an explicit "cannot stop here" branch with a concrete safe alternative, not a single accept/decline.</td>
+    <td>When the current location is unsafe, the flow explicitly states why ("currently in an active traffic lane") and offers a specific alternative ("about 0.3 mi ahead") before the passenger continues to the safe stop or cancels the request.</td>
+    <td>R7&ndash;R9</td>
+  </tr>
+  <tr>
+    <td>Help status needed distinguishable connecting/connected/failed states, including a working emergency path, and rating prompts needed to move out of the egress moment.</td>
+    <td>Help now shows distinct Request received&hellip; &rarr; Connecting &rarr; Connected / Unable to connect (with Retry) states, plus a dedicated Call emergency services escalation with its own Calling&hellip; &rarr; Connected sequence. The ride-rating prompt only appears on the post-trip summary screen, reachable only after the exit door is confirmed unlocked.</td>
+    <td>R9, R16&ndash;R18</td>
+  </tr>
+</table>
+</div>
+
+<hr class="sep">
+
+<!-- F1 -->
+<div class="func-section">
+<h2 class="func">F1 &mdash; Trip and ADS Status</h2>
+
+<div class="block">
+  <div class="label">Purpose</div>
+  <div>The Automated Driving System (ADS) continuously communicates trip and vehicle status so the passenger can interpret where they are in the journey without needing to monitor the road themselves.</div>
+</div>
+
+<div class="block">
+  <div class="label">Interaction Paradigm</div>
+  <div class="interaction-flow">ADS provides status &rarr; Passenger interprets journey information.</div>
+</div>
+
+<div class="block">
+  <div class="label">Primary Interaction Challenge</div>
+  <div>Passengers have no driving role and no shared mental model with the vehicle, so they default to wanting more information than a simple speed/destination readout &mdash; but excessive detail can overwhelm rather than reassure, especially on a first ride. The display must balance completeness against simplicity.</div>
+</div>
+
+<div class="label">Supporting Literature</div>
+<table class="lit">
+  <tr><th style="width:30%">Citation</th><th style="width:40%">Key Finding</th><th style="width:30%">Relevance to F1</th></tr>
+  <tr>
+    <td><span class="citation">Feierle, Danner, Steininger &amp; Bengler (2020)</span><br><span class="doi"><a href="https://doi.org/10.3390/info11020062">doi.org/10.3390/info11020062</a></span></td>
+    <td>In a 40-participant driving simulator study, passengers wanted information beyond system status, navigation, and speed &mdash; including upcoming maneuvers, maneuver rationale, and environment context. Preferences varied by individual.</td>
+    <td>Justifies showing route, ETA, and live ADS status together, with short rationale available rather than a bare status light.</td>
+  </tr>
+  <tr>
+    <td><span class="citation">Xie, Wang &amp; He (2025)</span><br><span class="doi"><a href="https://doi.org/10.1016/j.apergo.2025.104580">doi.org/10.1016/j.apergo.2025.104580</a></span></td>
+    <td>In an on-road study of fully driverless robotaxi rides with first-time users, displaying the full planned trajectory had limited effect on trust; the passenger's riding experience mattered more than repeated exposure to detailed driving data.</td>
+    <td>Cautions against over-engineering the status screen with exhaustive driving data &mdash; prioritizes a clear, reassuring first impression (ride readiness + simple status) over trajectory-level detail.</td>
+  </tr>
+</table>
+
+<div class="takeaway">
+  <div class="label">Design Requirement <span class="rnum">R1&ndash;R3</span></div>
+  The main in-vehicle view must display destination, ETA, and a single clear ADS-active status indicator simultaneously at all times during normal travel; optional driving detail may not replace this baseline view, and where a rider device is also used it must show the same pickup/drop-off, destination, and ETA information. This favors the simple, reassuring baseline state used in the prototype's Ride Start and In-Trip screens.
+</div>
+</div>
+
+<hr class="sep">
+
+<!-- F2 -->
+<div class="func-section">
+<h2 class="func">F2 &mdash; Environmental Awareness and Intent</h2>
+
+<div class="block">
+  <div class="label">Purpose</div>
+  <div>The ADS proactively explains what it currently observes in the environment and what action it intends to take, particularly before and during unplanned events, so passengers are not surprised by vehicle behavior.</div>
+</div>
+
+<div class="block">
+  <div class="label">Interaction Paradigm</div>
+  <div class="interaction-flow">ADS explains relevant observations and actions &rarr; Passenger receives reassurance without needing to ask.</div>
+</div>
+
+<div class="block">
+  <div class="label">Primary Interaction Challenge</div>
+  <div>Passengers cannot see the AI's perception system, so any sudden vehicle behavior (slowing, swerving, stopping) reads as unexplained and erodes trust unless the system narrates its awareness and intent before or as it acts &mdash; without interrupting the ride for routine driving.</div>
+</div>
+
+<div class="label">Supporting Literature</div>
+<table class="lit">
+  <tr><th style="width:30%">Citation</th><th style="width:40%">Key Finding</th><th style="width:30%">Relevance to F2</th></tr>
+  <tr>
+    <td><span class="citation">Fr&ouml;hlich, Schatz, Buchta, Schrammel, Suette &amp; Tscheligi (2019)</span><br><span class="doi"><a href="https://doi.org/10.1515/icom-2018-0032">doi.org/10.1515/icom-2018-0032</a></span></td>
+    <td>Two studies with first-time autonomous bus passengers found they value screens showing what the vehicle detects and plans to do ahead of time, especially around unplanned hazards. Awareness/intent communication mattered more for hazard recognition than for routine route guidance.</td>
+    <td>Directly supports a proactive, hazard-triggered banner (e.g., "Slowing for pedestrian") rather than only passive status.</td>
+  </tr>
+</table>
+
+<div class="takeaway">
+  <div class="label">Design Requirement <span class="rnum">R4&ndash;R6</span></div>
+  When the ADS performs a relevant non-routine maneuver, the interface must state the action and a plain-language reason in one short message, naming the hazard category when one exists ("Slowing for pedestrian") rather than a generic alert. The message must sit as a non-blocking banner layered over the base trip screen, and once the event clears, the interface must automatically remove the transient explanation and return to the calm baseline view &mdash; implemented in the prototype as the dismissible environment banner that auto-clears on return to the in-trip screen.
+</div>
+</div>
+
+<hr class="sep">
+
+<!-- F3 -->
+<div class="func-section">
+<h2 class="func">F3 &mdash; Boarding, Exit, and Stop Requests</h2>
+
+<div class="block">
+  <div class="label">Purpose</div>
+  <div>The passenger can initiate requests related to boarding, exiting, or stopping the vehicle, and the ADS evaluates feasibility against safety constraints before responding &mdash; this is the one core function with passenger-initiated control rather than passenger-receives-information.</div>
+</div>
+
+<div class="block">
+  <div class="label">Interaction Paradigm</div>
+  <div class="interaction-flow">Passenger requests &rarr; ADS evaluates &rarr; ADS responds (confirm, delay, or redirect to a safer option).</div>
+</div>
+
+<div class="block">
+  <div class="label">Primary Interaction Challenge</div>
+  <div>Unlike a human driver, the ADS cannot be negotiated with in natural language, and a stop/door request may not be immediately safe to grant. The interface must make the evaluation step visible (not an instant yes/no) and must remain understandable to riders with a wide range of abilities, since this is the function most tied to physical boarding/egress.</div>
+</div>
+
+<div class="label">Supporting Literature</div>
+<table class="lit">
+  <tr><th style="width:30%">Citation</th><th style="width:40%">Key Finding</th><th style="width:30%">Relevance to F3</th></tr>
+  <tr>
+    <td><span class="citation">Kuck, Wagner-Douglas, Wirtz &amp; Ladwig (2025)</span><br><span class="doi"><a href="https://doi.org/10.54941/ahfe1005861">doi.org/10.54941/ahfe1005861</a></span></td>
+    <td>Workshops with 28 participants, including retired users and people with cognitive, physical, and visual impairments, found passengers consistently want clear destination, route, arrival time, delay, and next-stop information, plus explicit door open/close status. Most groups preferred information delivered through both the shuttle display and a smartphone (redundant channels).</td>
+    <td>Supports explicit, redundant (visual + eventually audio) confirmation at every step of a stop/exit request, and plain door-status indicators that are understandable across ability levels.</td>
+  </tr>
+</table>
+
+<div class="takeaway">
+  <div class="label">Design Requirement <span class="rnum">R7&ndash;R9</span></div>
+  A stop request must be acknowledged before the vehicle changes state and must indicate a safe location is being evaluated ("Stop requested &mdash; Checking whether this location is safe" &rarr; "Finding a safe place to stop&hellip;"). If the current location is unsafe, the HMI must state that it cannot stop there and offer a concrete next safe alternative before proceeding ("This location is not safe for stopping&hellip; a safer stopping location is available about 0.3 mi ahead"), with the choice to continue or cancel left to the passenger. Exit guidance ("Safe to exit" / Unlock door) may appear only after the vehicle is stopped and exit readiness is confirmed; any post-ride rating prompt must occur only after egress is confirmed, not at the moment of stopping &mdash; implemented by gating the trip-summary/rating screen behind the confirmed door-unlock state.
+</div>
+</div>
+
+<hr class="sep">
+
+<!-- F4 -->
+<div class="func-section">
+<h2 class="func">F4 &mdash; Critical Safety Warnings</h2>
+
+<div class="block">
+  <div class="label">Purpose</div>
+  <div>When the ADS detects a condition requiring an immediate protective response (e.g., hazard avoidance, hard braking), it must alert the passenger instantly and unambiguously so they can follow safety instructions (remain seated, hold on) within a very short time window.</div>
+</div>
+
+<div class="block">
+  <div class="label">Interaction Paradigm</div>
+  <div class="interaction-flow">ADS detects critical conditions &rarr; Passenger follows instructions (not a dialogue; a directive).</div>
+</div>
+
+<div class="block">
+  <div class="label">Primary Interaction Challenge</div>
+  <div>This is the only function where passenger comprehension speed matters more than nuance or detail. The interface must guarantee extremely fast recognition under urgency and stress, using signal design (not wording alone) to compress response time, while not becoming a channel passengers tune out if used too often.</div>
+</div>
+
+<div class="label">Supporting Literature</div>
+<table class="lit">
+  <tr><th style="width:30%">Citation</th><th style="width:40%">Key Finding</th><th style="width:30%">Relevance to F4</th></tr>
+  <tr>
+    <td><span class="citation">Wang, Wu, Ma, Wang, Gan, Liu &amp; Yang (2022)</span><br><span class="doi"><a href="https://doi.org/10.1016/j.apergo.2021.103638">doi.org/10.1016/j.apergo.2021.103638</a></span></td>
+    <td>In a simulated driving study with 32 participants, high-mapping (iconic) audiovisual multimodal warnings produced faster recognition and response times than unimodal or low-mapping warnings. Combining a high-mapping visual icon with a high-mapping auditory cue outperformed single-channel warnings.</td>
+    <td>Justifies a full-screen, high-contrast, iconic (not purely textual) alert paired with an urgent tone, as the critical-warning pattern most likely to produce fast, correct passenger response.</td>
+  </tr>
+  <tr>
+    <td><span class="citation">Bolzmacher et al. (2026)</span><br><span class="doi"><a href="https://doi.org/10.3389/fmech.2025.1677376">doi.org/10.3389/fmech.2025.1677376</a></span></td>
+    <td>A user-centred evaluation of shared autonomous shuttle interface design and passenger behavior, examining how interface and warning design shape passengers' real-time safety and security perception during a ride, not just after the fact.</td>
+    <td>Supports pairing a highly salient Level 2 warning with an equally clear, reachable emergency/help path, since perceived safety and security are shaped together by the same interface rather than by the warning alone.</td>
+  </tr>
+</table>
+
+<div class="takeaway">
+  <div class="label">Design Requirement <span class="rnum">R10&ndash;R12</span></div>
+  Every Level 2 alert must use text plus a non-color visual cue and a corresponding audio/voice cue, and must state the required protective action explicitly (e.g., "remain seated and hold on"). The instruction must remain visible until the system transitions to a confirmed recovery or assistance state and must not be dismissible by the passenger. The prototype implements this as a full-screen iconic warning paired with a two-cue audio script &mdash; an ascending tone + "Safety event detected. Please remain seated and hold on." at onset, and a distinct descending tone + "Situation resolved. Preparing to continue." only once the recovery timeline reaches a confirmed resolved state &mdash; with no passenger-facing dismiss or mute control, since a live safety warning is not meant to be user-silenceable.
+</div>
+</div>
+
+<hr class="sep">
+
+<!-- F5 -->
+<div class="func-section">
+<h2 class="func">F5 &mdash; Minimal-Risk Maneuver and Recovery</h2>
+
+<div class="block">
+  <div class="label">Purpose</div>
+  <div>After the ADS executes a safety maneuver (e.g., pulling over, stopping), it must explain in plain language why the maneuver occurred and keep communicating its assistance/recovery status until the passenger understands the vehicle has returned to a safe, resolved state.</div>
+</div>
+
+<div class="block">
+  <div class="label">Interaction Paradigm</div>
+  <div class="interaction-flow">ADS executes safety maneuver &rarr; Passenger receives explanation and ongoing assistance status (not a single message).</div>
+</div>
+
+<div class="block">
+  <div class="label">Primary Interaction Challenge</div>
+  <div>Trust is most fragile immediately after an incident. A single static "we stopped safely" message is insufficient &mdash; passenger uncertainty and reduced trust persist unless the system visibly continues narrating its status as the situation resolves and the trip resumes, and unless it avoids reassurance language ("You're safe," a resume estimate) before that state is actually verified.</div>
+</div>
+
+<div class="label">Supporting Literature</div>
+<table class="lit">
+  <tr><th style="width:30%">Citation</th><th style="width:40%">Key Finding</th><th style="width:30%">Relevance to F5</th></tr>
+  <tr>
+    <td><span class="citation">Brandt, Wilbrink &amp; Oehl (2024)</span><br><span class="doi"><a href="https://doi.org/10.1016/j.trf.2024.09.006">doi.org/10.1016/j.trf.2024.09.006</a></span></td>
+    <td>In an online study, shuttle passengers evaluated internal HMIs with varying transparency during Minimal Risk Maneuvers (MRMs). Increasing "observability" and "reasoning" (showing what the system perceives and why it is acting) improved passenger understanding and predictability of the maneuver, addressing a documented gap in MRM transparency research.</td>
+    <td>Supports pairing the recovery sequence with a plain-language reason for the maneuver, not just a status label.</td>
+  </tr>
+  <tr>
+    <td><span class="citation">Lohaus et al. (2024)</span><br><span class="doi"><a href="https://doi.org/10.1016/j.chb.2024.108387">doi.org/10.1016/j.chb.2024.108387</a></span></td>
+    <td>Participants in simulated rides (automated or human-driven) that included a dangerous event showed a significant trust drop immediately after the incident in both conditions, with trust recovering only as the ride continued &mdash; showing trust is dynamic, not fixed, around critical events.</td>
+    <td>Justifies a multi-step recovery sequence rather than a single resolution message, to actively rebuild trust over time, and justifies withholding reassurance until each step is actually confirmed.</td>
+  </tr>
+</table>
+
+<div class="takeaway">
+  <div class="label">Design Requirement <span class="rnum">R13&ndash;R15</span></div>
+  Recovery messaging must use confirmed facts only; it must not state "You're safe" or give a resume estimate before verification. The HMI must distinguish stopped, assessing, resolved, and resuming states and show only the current confirmed state, and if the event remains unresolved it must state the next verified action rather than guess at resolution. The prototype's recovery timeline enforces this as a strict, presenter/system-driven sequence &mdash; Vehicle stopped (done) &rarr; Assessing situation&hellip; (active) &rarr; Situation resolved &rarr; Preparing to continue &rarr; Trip resuming &mdash; with a parallel "Vehicle remaining stopped / please remain seated" card shown instead when unresolved, and no control that lets the passenger advance the state themselves.
+</div>
+</div>
+
+<hr class="sep">
+
+<!-- F6 -->
+<div class="func-section">
+<h2 class="func">F6 &mdash; Emergency and Security Assistance</h2>
+
+<div class="block">
+  <div class="label">Purpose</div>
+  <div>The passenger can request human help (safety concern, emergency, general assistance) at any point in the ride, and the system must immediately acknowledge the request and show how it is being routed, even before a human responder is actually available.</div>
+</div>
+
+<div class="block">
+  <div class="label">Interaction Paradigm</div>
+  <div class="interaction-flow">Passenger requests help &rarr; System acknowledges and routes the request (bridges automation to human support).</div>
+</div>
+
+<div class="block">
+  <div class="label">Primary Interaction Challenge</div>
+  <div>Passengers requesting help are often already anxious, uncertain, or feeling vulnerable; silence or an ambiguous "request sent" state after tapping for help is likely to increase distress, and burying the emergency option behind routine options can cost critical seconds for the passenger who needs it most. The interface must continuously acknowledge the request is being handled and must make the emergency path the fastest one to find, not the last one listed.</div>
+</div>
+
+<div class="label">Supporting Literature</div>
+<table class="lit">
+  <tr><th style="width:30%">Citation</th><th style="width:40%">Key Finding</th><th style="width:30%">Relevance to F6</th></tr>
+  <tr>
+    <td><span class="citation">Hartwich, Hollander, Johannmeyer &amp; Krems (2021)</span><br><span class="doi"><a href="https://doi.org/10.3389/fhumd.2021.669030">doi.org/10.3389/fhumd.2021.669030</a></span></td>
+    <td>Fifty users experienced automated rides with no display, continuous driving-information display, or detail shown only in complex situations. Both display conditions improved trust versus no display; users with lower initial trust responded better to continuous information, while higher-trust users preferred detail only when relevant ("the more the better" does not apply to everyone).</td>
+    <td>Supports an acknowledgment-and-routing sequence that continuously communicates progress, since this is precisely the kind of uncertain, trust-sensitive moment where ongoing acknowledgment benefits anxious passengers most.</td>
+  </tr>
+  <tr>
+    <td><span class="citation">Schu&szlig;, Wintersberger &amp; Riener (2021)</span><br><span class="doi"><a href="https://doi.org/10.3390/mti5080043">doi.org/10.3390/mti5080043</a></span></td>
+    <td>Applying a feminist HCI lens to shared automated mobility, the authors identify security concerns specific to being alone with strangers and with the automated system itself, arguing interface design must proactively support security-seeking behavior rather than assume a neutral, equally-trusting user.</td>
+    <td>Directly motivates moving Emergency Assistance to the first position in the Help menu, visually distinct from routine support/report options: a passenger who already feels vulnerable should not have to read past two other options to find it.</td>
+  </tr>
+  <tr>
+    <td><span class="citation">Xu et al. (2025)</span><br><span class="doi"><a href="https://doi.org/10.1177/10711813251357895">doi.org/10.1177/10711813251357895</a></span></td>
+    <td>A usability study evaluating multimodal (non-visual) interface channels for visually impaired riders in autonomous ridesharing, testing whether audio/voice redundancy allows task completion equivalent to sighted riders.</td>
+    <td>Reinforces that Help and emergency status must be perceivable through non-visual channels, not through pill color alone &mdash; supporting the icon + text + (specified) audio redundancy used across the Help flow's state changes.</td>
+  </tr>
+  <tr>
+    <td><span class="citation">Naujoks, Wiedemann, Sch&ouml;mig, Hergeth &amp; Keinath (2019)</span><br><span class="doi"><a href="https://doi.org/10.1016/j.trf.2018.10.012">doi.org/10.1016/j.trf.2018.10.012</a></span></td>
+    <td>Synthesized design recommendations and a heuristic evaluation checklist for automated-vehicle HMIs, emphasizing clear, verifiable communication of system state as a baseline guideline for any automated-driving interface.</td>
+    <td>General support for making F6's acknowledgment/routing state explicit and verifiable, consistent with broader HMI guideline practice.</td>
+  </tr>
+</table>
+
+<div class="takeaway">
+  <div class="label">Design Requirement <span class="rnum">R16&ndash;R18</span></div>
+  A labeled Help control must remain available from both normal-trip and recovery states, and help status must distinguish requested, connecting, connected, failed, and confirmed-response states rather than leaving the passenger without feedback after they ask for help. Emergency help must be visually distinct from non-urgent reporting and must support redundant visual/text/audio communication where feasible. The prototype implements this as a single shared Help menu with Emergency Assistance listed first (red accent, distinct icon) ahead of Contact Rider Support and Report a Safety Concern, a Request received&hellip; &rarr; Connecting &rarr; Connected/Failed sequence with Retry, and a dedicated Call emergency services escalation with its own Calling&hellip; &rarr; Connected confirmation.
+</div>
+</div>
+
+<hr class="sep">
+
+<!-- STAGE 2 MEASUREMENT NOTE -->
+<div class="func-section">
+<div class="requirement">
+  <div class="label">Stage 2 Measurement Note</div>
+  Stage 2 usability testing will measure passenger trust using the empirically validated Trust in Automation scale (<span class="citation">Jian, Bisantz &amp; Drury, 2000</span>), administered around the Level 2 critical-event and recovery sequence (F4&ndash;F5) and again after a Help/emergency interaction (F6). This follows directly from Lohaus et al.'s (2024) finding that trust drops after a dangerous event and recovers only through continued communication &mdash; trust must therefore be measured as a trajectory across the critical-recovery sequence, not assumed stable or assessed only once at the end of the session.
+</div>
+</div>
+
+<hr class="sep">
+
+<h2 class="func" style="background:#3a4452;">Full Reference List</h2>
+<ul class="refs">
+  <li>Bolzmacher, C., et al. (2026). Safety and security perception in shared autonomous shuttles: A user-centred evaluation of interface design and passenger behaviour. <i>Frontiers in Mechanical Engineering, 11</i>, 1677376. <span class="doi"><a href="https://doi.org/10.3389/fmech.2025.1677376">https://doi.org/10.3389/fmech.2025.1677376</a></span></li>
+  <li>Brandt, T., Wilbrink, M., &amp; Oehl, M. (2024). Transparent internal human-machine interfaces in highly automated shuttles to support the communication of minimal risk maneuvers to the passengers. <i>Transportation Research Part F: Psychology and Behaviour, 107</i>, 275&ndash;287. <span class="doi"><a href="https://doi.org/10.1016/j.trf.2024.09.006">https://doi.org/10.1016/j.trf.2024.09.006</a></span></li>
+  <li>Feierle, A., Danner, S., Steininger, S., &amp; Bengler, K. (2020). Information needs and visual attention during urban, highly automated driving&mdash;An investigation of potential influencing factors. <i>Information, 11</i>(2), 62. <span class="doi"><a href="https://doi.org/10.3390/info11020062">https://doi.org/10.3390/info11020062</a></span></li>
+  <li>Fr&ouml;hlich, P., Schatz, R., Buchta, M., Schrammel, J., Suette, S., &amp; Tscheligi, M. (2019). "What's the Robo-Driver up to?" Requirements for screen-based awareness and intent communication in autonomous buses. <i>i-com, 18</i>(2), 151&ndash;165. <span class="doi"><a href="https://doi.org/10.1515/icom-2018-0032">https://doi.org/10.1515/icom-2018-0032</a></span></li>
+  <li>Hartwich, F., Hollander, C., Johannmeyer, D., &amp; Krems, J. F. (2021). Improving passenger experience and trust in automated vehicles through user-adaptive HMIs: "The more the better" does not apply to everyone. <i>Frontiers in Human Dynamics, 3</i>, 669030. <span class="doi"><a href="https://doi.org/10.3389/fhumd.2021.669030">https://doi.org/10.3389/fhumd.2021.669030</a></span></li>
+  <li>Jian, J.-Y., Bisantz, A. M., &amp; Drury, C. G. (2000). Foundations for an empirically determined scale of trust in automated systems. <i>International Journal of Cognitive Ergonomics, 4</i>(1), 53&ndash;71. <span class="doi"><a href="https://doi.org/10.1207/S15327566IJCE0401_04">https://doi.org/10.1207/S15327566IJCE0401_04</a></span></li>
+  <li>Kuck, I., Wagner-Douglas, L., Wirtz, L., &amp; Ladwig, S. (2025). An autonomous shuttle for everyone: What information do users need when using shuttles? In <i>Intelligent Human Systems Integration (IHSI 2025), 160</i>, 559&ndash;568. <span class="doi"><a href="https://doi.org/10.54941/ahfe1005861">https://doi.org/10.54941/ahfe1005861</a></span></li>
+  <li>Lohaus, L., et al. (2024). Automated or human: Which driver wins the race for the passengers' trust? Examining passenger trust in human-driven and automated vehicles following a dangerous situation. <i>Computers in Human Behavior, 161</i>, 108387. <span class="doi"><a href="https://doi.org/10.1016/j.chb.2024.108387">https://doi.org/10.1016/j.chb.2024.108387</a></span></li>
+  <li>Naujoks, F., Wiedemann, K., Sch&ouml;mig, N., Hergeth, S., &amp; Keinath, A. (2019). Towards guidelines and verification methods for automated vehicle HMIs. <i>Transportation Research Part F: Psychology and Behaviour, 60</i>, 121&ndash;136. <span class="doi"><a href="https://doi.org/10.1016/j.trf.2018.10.012">https://doi.org/10.1016/j.trf.2018.10.012</a></span></li>
+  <li>Schu&szlig;, M., Wintersberger, P., &amp; Riener, A. (2021). Security issues in shared automated mobility systems: A feminist HCI perspective. <i>Multimodal Technologies and Interaction, 5</i>(8), 43. <span class="doi"><a href="https://doi.org/10.3390/mti5080043">https://doi.org/10.3390/mti5080043</a></span></li>
+  <li>Wang, Y., Wu, B., Ma, S., Wang, D., Gan, T., Liu, H., &amp; Yang, Z. (2022). Effect of mapping characteristic on audiovisual warning: Evidence from a simulated driving study. <i>Applied Ergonomics, 99</i>, 103638. <span class="doi"><a href="https://doi.org/10.1016/j.apergo.2021.103638">https://doi.org/10.1016/j.apergo.2021.103638</a></span></li>
+  <li>Xie, W., Wang, Z., &amp; He, D. (2025). Effect of riding experience and HMI on users' trust and riding comfort in fully driverless autonomous vehicles: An on-road study. <i>Applied Ergonomics, 129</i>, 104580. <span class="doi"><a href="https://doi.org/10.1016/j.apergo.2025.104580">https://doi.org/10.1016/j.apergo.2025.104580</a></span></li>
+  <li>Xu, G., et al. (2025). Evaluating multimodal interfaces for visually impaired users in autonomous ridesharing: A usability study. <i>Proceedings of the Human Factors and Ergonomics Society Annual Meeting, 69</i>(1), 994&ndash;1000. <span class="doi"><a href="https://doi.org/10.1177/10711813251357895">https://doi.org/10.1177/10711813251357895</a></span></li>
+</ul>
+<div class="footer-note">Prepared to accompany the clickable HTML/CSS autonomous shuttle HMI prototype (hmi-shuttle-prototype.html). HCDE 501, Fall 2026, University of Michigan&ndash;Dearborn.</div>
+
+</body>
+</html>
